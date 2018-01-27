@@ -6,8 +6,11 @@
 
 #include "Config.h"
 #include "hlslib/DataPack.h"
+#include "hlslib/Operators.h"
+#include "hlslib/TreeReduce.h"
+#include "hlslib/Utility.h"
 
-// constexpr int kMemoryWidth = kMemoryWidthBytes / sizeof(Data_t);
+constexpr int kMemoryWidth = kMemoryWidthBytes / sizeof(Data_t);
 // constexpr int kMemoryWidthVec = kMemoryWidthBytes / sizeof(Vec_t);
 // static_assert(kMemoryWidthBytes % sizeof(Data_t) == 0,
 //               "Memory width not divisable by size of data type.");
@@ -15,8 +18,7 @@
 // static_assert(kMemoryWidth % (kkKernelWidth == 0,
 //               "Memory width must be divisable by kernel width.");
 // using KernelPack_t = hlslib::DataPack<Data_t, kKernelWidth>;
-// using MemoryPack_t = hlslib::DataPack<KernelPack_t, kKernelPerMemory>;
-//
+using MemoryPack_t = hlslib::DataPack<Data_t, kMemoryWidth>;
 using Vec_t = hlslib::DataPack<Data_t, kDims>;
 
 // constexpr int kNMemory = kN / kMemoryWidth;
@@ -43,13 +45,30 @@ struct Packed {
 
 extern "C" {
 
-void NBody(Data_t const mass[], Vec_t const positionIn[], Vec_t positionOut[],
-           Vec_t const velocityIn[], Vec_t velocityOut[]);
-
+void NBody(MemoryPack_t const mass[], Vec_t const positionIn[],
+           Vec_t positionOut[], Vec_t const velocityIn[], Vec_t velocityOut[]);
 }
 
-inline Data_t ComputeAcceleration(Data_t const &m1, Data_t const &s0,
-                           Data_t const &s1) {
-  const auto diff = (s1 - s0);
-  return m1 / (diff * diff);
+inline Vec_t ComputeAcceleration(Data_t const &m1, Vec_t const &s0,
+                                 Vec_t const &s1) {
+  #pragma HLS INLINE
+  Data_t diff[kDims];
+  Data_t diffSquared[kDims];
+  for (int d = 0; d < kDims; ++d) {
+    #pragma HLS UNROLL
+    const auto diff_i = s1[d] - s0[d];
+    diff[d] = diff_i;
+    diffSquared[d] = diff_i * diff_i;
+  }
+  const Data_t distSquared =
+      hlslib::TreeReduce<Data_t, hlslib::op::Add<Data_t>, kDims>(diffSquared);
+  const Data_t dist = std::sqrt(distSquared);
+  const Data_t distCubed = dist * dist * dist;
+  const Data_t distCubedReciprocal = Data_t(1) / distCubed;
+  Vec_t acc;
+  for (int d = 0; d < kDims; ++d) {
+    #pragma HLS UNROLL
+    acc[d] = m1 * diff[d] * distCubedReciprocal; 
+  }
+  return acc;
 }
