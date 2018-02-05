@@ -1,3 +1,0 @@
-[submodule "hlslib"]
-	path = hlslib
-	url = git@spclgitlab.ethz.ch:definelj/hlslib.git
