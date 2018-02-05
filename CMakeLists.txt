@@ -34,7 +34,8 @@ enable_testing()
 
 if(NOT NBODY_USE_SIMPLE)
   set(NBODY_KERNEL_SRC
-      ${CMAKE_SOURCE_DIR}/kernel/NBody.cpp)
+      ${CMAKE_SOURCE_DIR}/kernel/NBody.cpp
+      ${CMAKE_SOURCE_DIR}/kernel/Memory.cpp)
 else()
   set(NBODY_KERNEL_SRC
       ${CMAKE_SOURCE_DIR}/kernel/NBody.cpp)
@@ -47,6 +48,10 @@ add_executable(Stats src/Stats.cpp)
 add_executable(TestNBody test/TestNBody.cpp)
 target_link_libraries(TestNBody ${SDAccel_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} nbodykernel)
 add_test(TestNBody TestNBody)
+
+add_executable(TestNonDivisiblePack test/TestNonDivisiblePack.cpp)
+target_link_libraries(TestNonDivisiblePack ${SDAccel_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} nbodykernel)
+add_test(TestNonDivisiblePack TestNonDivisiblePack)
 
 set(NBODY_PROJECT_NAME "NBody")
 string(REPLACE ";" " " NBODY_SRC_SYNTHESIS "${NBODY_KERNEL_SRC}")

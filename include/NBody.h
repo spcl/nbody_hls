@@ -1,6 +1,6 @@
 /// @author    Johannes de Fine Licht (johannes.definelicht@inf.ethz.ch)
-/// @date      June 2017 
-/// @copyright This software is copyrighted under the BSD 3-Clause License. 
+/// @date      June 2017
+/// @copyright This software is copyrighted under the BSD 3-Clause License.
 
 #pragma once
 
@@ -20,6 +20,8 @@ constexpr int kMemoryWidth = kMemoryWidthBytes / sizeof(Data_t);
 // using KernelPack_t = hlslib::DataPack<Data_t, kKernelWidth>;
 using MemoryPack_t = hlslib::DataPack<Data_t, kMemoryWidth>;
 using Vec_t = hlslib::DataPack<Data_t, kDims>;
+using Padded_t =
+    hlslib::DataPack<Data_t, 1 << (hlslib::ConstLog2(kDims - 1) + 1)>;
 
 // constexpr int kNMemory = kN / kMemoryWidth;
 // static_assert(kN % kMemoryWidth == 0,
@@ -51,11 +53,11 @@ void NBody(MemoryPack_t const mass[], Vec_t const positionIn[],
 
 inline Vec_t ComputeAcceleration(Data_t const &m1, Vec_t const &s0,
                                  Vec_t const &s1) {
-  #pragma HLS INLINE
+#pragma HLS INLINE
   Data_t diff[kDims];
   Data_t diffSquared[kDims];
   for (int d = 0; d < kDims; ++d) {
-    #pragma HLS UNROLL
+#pragma HLS UNROLL
     const auto diff_i = s1[d] - s0[d];
     diff[d] = diff_i;
     diffSquared[d] = diff_i * diff_i;
@@ -67,8 +69,8 @@ inline Vec_t ComputeAcceleration(Data_t const &m1, Vec_t const &s0,
   const Data_t distCubedReciprocal = Data_t(1) / distCubed;
   Vec_t acc;
   for (int d = 0; d < kDims; ++d) {
-    #pragma HLS UNROLL
-    acc[d] = m1 * diff[d] * distCubedReciprocal; 
+#pragma HLS UNROLL
+    acc[d] = m1 * diff[d] * distCubedReciprocal;
   }
   return acc;
 }
