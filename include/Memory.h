@@ -19,6 +19,11 @@ void UpdateVelocityAndPosition(hlslib::Stream<Packed> &fromKernel,
 /// binary size
 void ReadVector(Vec_t const memory[], hlslib::Stream<Vec_t> &stream);
 
+/// Reads 512-bit values from memory, to be converted into vectors by a
+/// subsequent module
+void ReadVectorMemory(MemoryPack_t const memory[],
+                      hlslib::Stream<MemoryPack_t> &stream);
+
 /// Every timestep, buffer and repeat the first tile, as this must be stored in
 /// the processing elements before streaming can begin
 void RepeatFirstTile(hlslib::Stream<Packed> &streamIn,
@@ -32,6 +37,16 @@ void WriteVelocity(hlslib::Stream<Vec_t> &stream, Vec_t memory[]);
 /// not of binary size
 void WritePosition(hlslib::Stream<Vec_t> &stream, Vec_t memory[]);
 
+/// Writes velocity vectors to memory after they've been converted to the memory
+/// width.
+void WriteVelocityMemory(hlslib::Stream<MemoryPack_t> &stream,
+                         MemoryPack_t memory[]);
+
+/// Directly writes position vectors to memory. Does not work if the vector is
+/// not of binary size
+void WritePositionMemory(hlslib::Stream<MemoryPack_t> &stream,
+                         MemoryPack_t memory[]);
+
 /// Reads 512-bit wide vectors of mass values to be converted into scalars or
 /// shorter vectors by the subsequent module
 void ReadMass(MemoryPack_t const memory[],
@@ -42,31 +57,34 @@ void ReadMass(MemoryPack_t const memory[],
 void PackData(hlslib::Stream<Vec_t> &posIn, hlslib::Stream<Data_t> &massIn,
               hlslib::Stream<Packed> &packedOut);
 
-/// Takes a stream of wide memory accesses and converts it into elements of a
-/// size that do not divide into the memory width. When crossing a memory
-/// boundary, use bytes from both the previous and next memory access.
-template <unsigned iterations, typename T>
-void UnpackNonDivisible(hlslib::Stream<MemoryPack_t> &streamIn,
-                        hlslib::Stream<T> &streamOut);
-
-// template <unsigned iterations, typename T>
-// void PackNonDivisible(hlslib::Stream<T> &streamIn,
-//                       hlslib::Stream<MemoryPack_t> &streamOut);
-
 /// Narrows 512-bit wide vectors from memory into scalar mass elements
 void UnpackMass(hlslib::Stream<MemoryPack_t> &streamIn,
                 hlslib::Stream<Data_t> &streamOut);
 
-template <typename T, unsigned iterations>
-void PackMemory(hlslib::Stream<T> &streamIn,
-                hlslib::Stream<MemoryPack_t> &streamOut);
+/// Takes a stream of wide memory accesses and converts it into elements of a
+/// size that do not divide into the memory width. When crossing a memory
+/// boundary, use bytes from both the previous and next memory access.
+void ConvertMemoryToVector(hlslib::Stream<MemoryPack_t> &streamIn,
+                           hlslib::Stream<Vec_t> &streamOut);
+
+/// Takes a stream of wide memory accesses and converts it into elements of a
+/// size that do not divide into the memory width. When crossing a memory
+/// boundary, use bytes from both the previous and next memory access.
+void ConvertVelocityToMemory(hlslib::Stream<Vec_t> &streamIn,
+                             hlslib::Stream<MemoryPack_t> &streamOut);
+
+/// Takes a stream of wide memory accesses and converts it into elements of a
+/// size that do not divide into the memory width. When crossing a memory
+/// boundary, use bytes from both the previous and next memory access.
+void ConvertPositionToMemory(hlslib::Stream<Vec_t> &streamIn,
+                             hlslib::Stream<MemoryPack_t> &streamOut);
 
 /// Takes a stream of wide memory accesses and converts it into elements of a
 /// size that do not divide into the memory width. When crossing a memory
 /// boundary, use bytes from both the previous and next memory access.
 template <unsigned iterations, typename T>
-void UnpackNonDivisible(hlslib::Stream<MemoryPack_t> &streamIn,
-                        hlslib::Stream<T> &streamOut) {
+void ConvertMemoryToNonDivisible(hlslib::Stream<MemoryPack_t> &streamIn,
+                                 hlslib::Stream<T> &streamOut) {
   ap_uint<6> bytesRemaining = 0;
   MemoryPack_t curr;
   MemoryPack_t next;
@@ -99,8 +117,8 @@ void UnpackNonDivisible(hlslib::Stream<MemoryPack_t> &streamIn,
 /// size that do not divide into the memory width. When crossing a memory
 /// boundary, use bytes from both the previous and next memory access.
 template <unsigned iterations, typename T>
-void PackNonDivisible(hlslib::Stream<T> &streamIn,
-                      hlslib::Stream<MemoryPack_t> &streamOut) {
+void ConvertNonDivisibleToMemory(hlslib::Stream<T> &streamIn,
+                                 hlslib::Stream<MemoryPack_t> &streamOut) {
   ap_uint<hlslib::ConstLog2(kMemoryWidthBytes)> bytesMissing =
       kMemoryWidthBytes;
   MemoryPack_t out;

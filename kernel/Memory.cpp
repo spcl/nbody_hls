@@ -59,6 +59,24 @@ Time:
   }
 }
 
+/// Reads 512-bit values from memory, to be converted into vectors by a
+/// subsequent module
+void ReadVectorMemory(MemoryPack_t const memory[],
+                      hlslib::Stream<MemoryPack_t> &stream) {
+Time:
+  for (int t = 0; t < kSteps; ++t) {
+  Outer:
+    for (int n = 0; n < kN / kTileSize; ++n) {
+    Inner:
+      for (int m = 0; m < kMemoryPerTile; ++m) {
+        #pragma HLS LOOP_FLATTEN
+        #pragma HLS PIPELINE II=1
+        stream.WriteBlocking(memory[m]);
+      }
+    }
+  }
+}
+
 /// Every timestep, buffer and repeat the first tile, as this must be stored in
 /// the processing elements before streaming can begin
 void RepeatFirstTile(hlslib::Stream<Packed> &streamIn,
@@ -115,6 +133,39 @@ Time:
   }
 }
 
+/// Writes velocity vectors to memory after they've been converted to the memory
+/// width.
+void WriteVelocityMemory(hlslib::Stream<MemoryPack_t> &stream,
+                         MemoryPack_t memory[]) {
+Time:
+  for (int t = 0; t < kSteps; ++t) {
+  Outer:
+    for (int n = 0; n < kN / kTileSize; ++n) {
+    Inner:
+      for (int m = 0; m < kMemoryPerTile; ++m) {
+        #pragma HLS LOOP_FLATTEN
+        #pragma HLS PIPELINE II=1
+        memory[m] = hlslib::ReadBlocking(stream);
+      }
+    }
+  }
+}
+
+/// Directly writes position vectors to memory. Does not work if the vector is
+/// not of binary size
+void WritePositionMemory(hlslib::Stream<MemoryPack_t> &stream,
+                         MemoryPack_t memory[]) {
+Time:
+  for (int t = 0; t < kSteps; ++t) {
+  Outer:
+    for (int n = 0; n < kMemoryPerTile; ++n) {
+      #pragma HLS LOOP_FLATTEN
+      #pragma HLS PIPELINE II=1
+      memory[n] = hlslib::ReadBlocking(stream);
+    }
+  }
+}
+
 /// Reads 512-bit wide vectors of mass values to be converted into scalars or
 /// shorter vectors by the subsequent module
 void ReadMass(MemoryPack_t const memory[],
@@ -124,7 +175,7 @@ Time:
   Outer:
     for (int n = 0; n < kN / kTileSize; ++n) {
     Inner:
-      for (int m = 0; m < hlslib::CeilDivide(kN, kMemoryWidth); ++m) {
+      for (int m = 0; m < kN / kMemoryWidth; ++m) {
         #pragma HLS LOOP_FLATTEN
         #pragma HLS PIPELINE II=1
         hlslib::WriteBlocking(stream, memory[m]);
@@ -183,20 +234,31 @@ void UnpackMass(hlslib::Stream<MemoryPack_t> &streamIn,
   }
 }
 
-template <typename T, unsigned iterations>
-void PackMemory(hlslib::Stream<T> &streamIn,
-                hlslib::Stream<MemoryPack_t> &streamOut) {
-  constexpr int kElementsPerMemory = sizeof(MemoryPack_t) / sizeof(T);
-  static_assert(sizeof(MemoryPack_t) % sizeof(T) == 0, "Must be divisible");
-  for (unsigned i = 0; i < iterations / kElementsPerMemory; ++i) {
-    MemoryPack_t mem;
-    for (unsigned j = 0; j < kElementsPerMemory; ++j) {
-      #pragma HLS LOOP_FLATTEN
-      #pragma HLS PIPELINE II=1
-      mem[j] = hlslib::ReadBlocking(streamIn);
-      if (j == kElementsPerMemory - 1) {
-        hlslib::WriteBlocking(streamOut, mem);
-      }
-    }
-  }
+/// Takes a stream of wide memory accesses and converts it into elements of a
+/// size that do not divide into the memory width. When crossing a memory
+/// boundary, use bytes from both the previous and next memory access.
+void ConvertMemoryToVector(hlslib::Stream<MemoryPack_t> &streamIn,
+                           hlslib::Stream<Vec_t> &streamOut) {
+  #pragma HLS INLINE
+  ConvertMemoryToNonDivisible<kSteps *(kN / kTileSize) * kN, Vec_t>(streamIn,
+                                                                    streamOut);
+}
+
+/// Takes a stream of wide memory accesses and converts it into elements of a
+/// size that do not divide into the memory width. When crossing a memory
+/// boundary, use bytes from both the previous and next memory access.
+void ConvertVelocityToMemory(hlslib::Stream<Vec_t> &streamIn,
+                             hlslib::Stream<MemoryPack_t> &streamOut) {
+  #pragma HLS INLINE
+  ConvertNonDivisibleToMemory<kSteps *(kN / kTileSize) * kN, Vec_t>(streamIn,
+                                                                    streamOut);
+}
+
+/// Takes a stream of wide memory accesses and converts it into elements of a
+/// size that do not divide into the memory width. When crossing a memory
+/// boundary, use bytes from both the previous and next memory access.
+void ConvertPositionToMemory(hlslib::Stream<Vec_t> &streamIn,
+                             hlslib::Stream<MemoryPack_t> &streamOut) {
+  #pragma HLS INLINE
+  ConvertNonDivisibleToMemory<kSteps * kN, Vec_t>(streamIn, streamOut);
 }

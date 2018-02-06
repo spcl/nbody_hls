@@ -9,11 +9,11 @@
 #include "hls_half.h"
 
 using Data_t = ${NBODY_DATA_TYPE}; 
-constexpr int kKernelWidth = ${NBODY_KERNEL_WIDTH};
-constexpr int kMemoryWidthBytes = 64; // 512-bit memory port
-constexpr int kN = ${NBODY_SIZE};
-constexpr int kTileSize = ${NBODY_TILE_SIZE};
-constexpr int kDims = ${NBODY_DIMS};
-constexpr int kSteps = ${NBODY_STEPS};
+constexpr unsigned kKernelWidth = ${NBODY_KERNEL_WIDTH};
+constexpr unsigned kMemoryWidthBytes = 64; // 512-bit memory port
+constexpr unsigned kN = ${NBODY_SIZE};
+constexpr unsigned kTileSize = ${NBODY_TILE_SIZE};
+constexpr unsigned kDims = ${NBODY_DIMS};
+constexpr unsigned kSteps = ${NBODY_STEPS};
 constexpr Data_t kTimestep = ${NBODY_TIMESTEP};
 constexpr float kFrequency = ${NBODY_TARGET_CLOCK};

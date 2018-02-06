@@ -11,26 +11,19 @@
 #include "hlslib/Utility.h"
 
 constexpr int kMemoryWidth = kMemoryWidthBytes / sizeof(Data_t);
-// constexpr int kMemoryWidthVec = kMemoryWidthBytes / sizeof(Vec_t);
-// static_assert(kMemoryWidthBytes % sizeof(Data_t) == 0,
-//               "Memory width not divisable by size of data type.");
-// constexpr int kKernelPerMemory = kMemoryWidth / kKernelWidth;
-// static_assert(kMemoryWidth % (kkKernelWidth == 0,
-//               "Memory width must be divisable by kernel width.");
-// using KernelPack_t = hlslib::DataPack<Data_t, kKernelWidth>;
+
 using MemoryPack_t = hlslib::DataPack<Data_t, kMemoryWidth>;
 using Vec_t = hlslib::DataPack<Data_t, kDims>;
-using Padded_t =
-    hlslib::DataPack<Data_t, 1 << (hlslib::ConstLog2(kDims - 1) + 1)>;
+// using Padded_t =
+//     hlslib::DataPack<Data_t, 1 << (hlslib::ConstLog2(kDims - 1) + 1)>;
 
-// constexpr int kNMemory = kN / kMemoryWidth;
-// static_assert(kN % kMemoryWidth == 0,
-//               "N must be divisable by memory width.");
+// How many 512-bit reads/writes are issued for loading in the entire spatial
+// dimension (kN * kDims elements)
+constexpr unsigned kMemoryPerTile = (kDims * kN) / kMemoryWidth;
+static_assert(kN % kMemoryWidth == 0,
+              "Domain size not divisible by memory width.");
 
-// constexpr int kTileSizeMemory = kTileSize / kMemoryWidth;
-// static_assert(kTileSize % kMemoryWidth == 0,
-//               "Tile size must be divisable by memory width");
-
+/// Packs acceleration, position and mass into a single wide bus
 struct Packed {
   Vec_t acc;
   Vec_t pos;
@@ -47,8 +40,12 @@ struct Packed {
 
 extern "C" {
 
-void NBody(MemoryPack_t const mass[], Vec_t const positionIn[],
-           Vec_t positionOut[], Vec_t const velocityIn[], Vec_t velocityOut[]);
+// void NBody(MemoryPack_t const mass[], Vec_t const positionIn[],
+//            Vec_t positionOut[], Vec_t const velocityIn[], Vec_t velocityOut[]);
+
+void NBody(MemoryPack_t const mass[], MemoryPack_t const positionIn[],
+           MemoryPack_t positionOut[], MemoryPack_t const velocityIn[],
+           MemoryPack_t velocityOut[]);
 }
 
 inline Vec_t ComputeAcceleration(Data_t const &m1, Vec_t const &s0,

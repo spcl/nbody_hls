@@ -4,6 +4,7 @@
 
 #include "NBody.h"
 #include "Utility.h"
+#include <cmath>
 
 int main() {
   std::vector<Data_t> mass(kN);
@@ -33,12 +34,15 @@ int main() {
                   }
                 });
 
-  NBody(reinterpret_cast<MemoryPack_t const *>(&mass[0]), position.data(),
-        position.data(), velocity.data(), velocity.data());
+  NBody(reinterpret_cast<MemoryPack_t const *>(&mass[0]),
+        reinterpret_cast<MemoryPack_t const *>(&position[0]),
+        reinterpret_cast<MemoryPack_t *>(&position[0]),
+        reinterpret_cast<MemoryPack_t const *>(&velocity[0]),
+        reinterpret_cast<MemoryPack_t *>(&velocity[0]));
 
   Reference(mass.data(), positionRef.data(), velocityRef.data());
 
-  for (int i = 0; i < std::min(kN, 10); ++i) {
+  for (unsigned i = 0; i < std::min<unsigned>(kN, 10); ++i) {
     std::cout << position[i] << " / " << positionRef[i] << ", " << velocity[i]
               << ", " << velocityRef[i] << "\n";
   }

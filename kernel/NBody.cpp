@@ -139,9 +139,9 @@ Time:
 //   } // End loop T
 // }
 
-
-void NBody(MemoryPack_t const mass[], Vec_t const positionIn[],
-           Vec_t positionOut[], Vec_t const velocityIn[], Vec_t velocityOut[]) {
+void NBody(MemoryPack_t const mass[], MemoryPack_t const positionIn[],
+           MemoryPack_t positionOut[], MemoryPack_t const velocityIn[],
+           MemoryPack_t velocityOut[]) {
            
   #pragma HLS INTERFACE m_axi port=mass offset=slave bundle=gmem0
   #pragma HLS INTERFACE m_axi port=positionIn offset=slave bundle=gmem1
@@ -157,13 +157,17 @@ void NBody(MemoryPack_t const mass[], Vec_t const positionIn[],
   
   #pragma HLS DATAFLOW
 
+  hlslib::Stream<MemoryPack_t> posPipeInMemory("posPipeInMemory");
   hlslib::Stream<Vec_t> posPipeIn("posPipeIn");
   hlslib::Stream<Vec_t> posPipeOut("posPipeOut");
+  hlslib::Stream<MemoryPack_t> posPipeOutMemory("posPipeOutMemory");
+  hlslib::Stream<MemoryPack_t> velPipeInMemory("velPipeInMemory");
   hlslib::Stream<Vec_t> velPipeIn("velPipeIn");
   hlslib::Stream<Vec_t> velPipeOut("velPipeOut");
-  hlslib::Stream<MemoryPack_t> massMemPipe("massMemPipe");
+  hlslib::Stream<MemoryPack_t> velPipeOutMemory("velPipeOutMemory");
+  hlslib::Stream<MemoryPack_t> massPipeMemory("massPipeMemory");
   hlslib::Stream<Data_t> massPipe("massPipe");
-  hlslib::Stream<Packed> repeatPipe("posPipeInRepeat");
+  hlslib::Stream<Packed> repeatPipe("repeatPipe");
   hlslib::Stream<Packed> packedPipes[kTileSize + 1];
   #pragma HLS DATA_PACK variable=packedPipes
 #ifndef NBODY_SYNTHESIS
@@ -174,10 +178,12 @@ void NBody(MemoryPack_t const mass[], Vec_t const positionIn[],
 
   HLSLIB_DATAFLOW_INIT();
 
-  HLSLIB_DATAFLOW_FUNCTION(ReadVector, positionIn, posPipeIn);
-  HLSLIB_DATAFLOW_FUNCTION(ReadVector, velocityIn, velPipeIn);
-  HLSLIB_DATAFLOW_FUNCTION(ReadMass, mass, massMemPipe);
-  HLSLIB_DATAFLOW_FUNCTION(UnpackMass, massMemPipe, massPipe);
+  HLSLIB_DATAFLOW_FUNCTION(ReadVectorMemory, positionIn, posPipeInMemory);
+  HLSLIB_DATAFLOW_FUNCTION(ConvertMemoryToVector, posPipeInMemory, posPipeIn);
+  HLSLIB_DATAFLOW_FUNCTION(ReadVectorMemory, velocityIn, velPipeInMemory);
+  HLSLIB_DATAFLOW_FUNCTION(ConvertMemoryToVector, velPipeInMemory, velPipeIn);
+  HLSLIB_DATAFLOW_FUNCTION(ReadMass, mass, massPipeMemory);
+  HLSLIB_DATAFLOW_FUNCTION(UnpackMass, massPipeMemory, massPipe);
   HLSLIB_DATAFLOW_FUNCTION(PackData, posPipeIn, massPipe, repeatPipe);
   HLSLIB_DATAFLOW_FUNCTION(RepeatFirstTile, repeatPipe, packedPipes[0]);
 
@@ -189,8 +195,12 @@ void NBody(MemoryPack_t const mass[], Vec_t const positionIn[],
 
   HLSLIB_DATAFLOW_FUNCTION(UpdateVelocityAndPosition, packedPipes[kTileSize],
                            velPipeIn, velPipeOut, posPipeOut);
-  HLSLIB_DATAFLOW_FUNCTION(WritePosition, posPipeOut, positionOut);
-  HLSLIB_DATAFLOW_FUNCTION(WriteVelocity, velPipeOut, velocityOut);
+  HLSLIB_DATAFLOW_FUNCTION(ConvertPositionToMemory, posPipeOut,
+                           posPipeOutMemory);
+  HLSLIB_DATAFLOW_FUNCTION(ConvertVelocityToMemory, velPipeOut,
+                           velPipeOutMemory);
+  HLSLIB_DATAFLOW_FUNCTION(WritePositionMemory, posPipeOutMemory, positionOut);
+  HLSLIB_DATAFLOW_FUNCTION(WriteVelocityMemory, velPipeOutMemory, velocityOut);
 
   HLSLIB_DATAFLOW_FINALIZE();
 }

@@ -18,7 +18,8 @@ bool TestUnpack() {
     streamIn.WriteOptimistic(
         *(reinterpret_cast<MemoryPack_t const *>(&in[0]) + i));
   }
-  UnpackNonDivisible<kIterationsKernel, NonDivisibleType>(streamIn, streamOut);
+  ConvertMemoryToNonDivisible<kIterationsKernel, NonDivisibleType>(streamIn,
+                                                                   streamOut);
   for (int i = 0; i < kIterationsKernel; ++i) {
     const auto out = streamOut.ReadOptimistic();
     if (out.a != 1 || out.b != 2 || out.c != 3) {
@@ -38,7 +39,8 @@ bool TestPack() {
   for (int i = 0; i < kIterationsKernel; ++i) {
     streamIn.WriteOptimistic(in[i]);
   }
-  PackNonDivisible<kIterationsKernel, NonDivisibleType>(streamIn, streamOut);
+  ConvertNonDivisibleToMemory<kIterationsKernel, NonDivisibleType>(streamIn,
+                                                                   streamOut);
   for (int i = 0; i < kIterationsMemory; ++i) {
     *(reinterpret_cast<MemoryPack_t *>(&out[0]) + i) =
         streamOut.ReadOptimistic();
