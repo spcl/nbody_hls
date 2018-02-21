@@ -28,6 +28,15 @@
 // long as we stay under the bandwidth limit this should come at no hit to
 // performance.
 
+// Notes(Simon): The CUDA implementation assumes that the input is given by vectors of the
+// form (x, y, z, m), (better access pattern, might want to assume that as well?).
+// Cuda also alters the computation a little to avoid having values go to infinity, they claim
+// this is done in practice: f(i,j) = G*m(i)*m(j)*r(i,j)/(scalar_prod(r(i,j)) + eps^2)^(3/2)
+// (Essentially this adds a softening factor epsilon to avoid dividing by 0, motivated by
+// galaxies actually going through each other instead of colliding. This also means that the
+// force of an object on itself does not need a extra case distinction as it will safely
+// evaluate to 0.)
+
 void ProcessingElementFlattened(hlslib::Stream<Packed> &streamIn,
                                 hlslib::Stream<Packed> &streamOut, int depth) {
   Vec_t pos, nextPos;
