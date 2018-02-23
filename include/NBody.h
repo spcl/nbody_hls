@@ -71,3 +71,27 @@ inline Vec_t ComputeAcceleration(Data_t const &m1, Vec_t const &s0,
   }
   return acc;
 }
+
+inline Vec_t ComputeAccelerationSoftened(Data_t const &m1, Vec_t const &s0,
+                                 Vec_t const &s1) {
+#pragma HLS INLINE
+    Data_t diff[kDims];
+    Data_t diffSquared[kDims];
+    for (int d = 0; d < kDims; ++d) {
+#pragma HLS UNROLL
+        const auto diff_i = s1[d] - s0[d];
+        diff[d] = diff_i;
+        diffSquared[d] = diff_i * diff_i;
+    }
+    const Data_t distSquared =
+    hlslib::TreeReduce<Data_t, hlslib::op::Add<Data_t>, kDims>(diffSquared);
+    const Data_t dist = std::sqrt(distSquared + kEps2);
+    const Data_t distCubed = dist * dist * dist;
+    const Data_t distCubedReciprocal = Data_t(1) / distCubed;
+    Vec_t acc;
+    for (int d = 0; d < kDims; ++d) {
+#pragma HLS UNROLL
+        acc[d] = m1 * diff[d] * distCubedReciprocal;
+    }
+    return acc;
+}

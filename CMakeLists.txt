@@ -1,10 +1,10 @@
 # Author:  Johannes de Fine Licht (johannes.definelicht@inf.ethz.ch)
-# Created: January 2018 
+# Created: January 2018
 
 cmake_minimum_required(VERSION 2.8)
 project(nbody_hls C CXX)
 
-# Target options 
+# Target options
 set(NBODY_PART_NAME "xcku115-flvb2104-2-e" CACHE STRING "Part name for HLS.")
 set(NBODY_DSA_NAME "xilinx:xil-accel-rd-ku115:4ddr-xpr:4.0" CACHE STRING
     "DSA string for xocc.")
@@ -19,6 +19,8 @@ set(NBODY_DIMS 3 CACHE STRING "Number of dimensions.")
 set(NBODY_TIMESTEP 0.01 CACHE STRING "Size of each timestep.")
 set(NBODY_SIZE 1024 CACHE STRING "Number of bodies.")
 set(NBODY_TILE_SIZE 4 CACHE STRING "Tile size.")
+set(NBODY_SOFTENING_EPSILON 0.00125 CACHE STRING "Epsilon used for Softening.")
+set(NBODY_DAMPING_FACTOR 0.995 CACHE STRING "Damping factor for velocity.")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/hlslib/cmake)
 
@@ -63,7 +65,7 @@ else()
 endif()
 configure_file(scripts/Synthesis.tcl.in SynthesizeNBody.tcl)
 add_custom_target(synthesize_nbody
-  COMMAND ${SDAccel_VIVADO_HLS} -f SynthesizeNBody.tcl) 
+  COMMAND ${SDAccel_VIVADO_HLS} -f SynthesizeNBody.tcl)
 if(SDAccel_FOUND)
   set(NBODY_XOCC_COMMAND
     -t hw
@@ -87,7 +89,7 @@ if(SDAccel_FOUND)
         --kernel_frequency ${NBODY_TARGET_CLOCK})
   endif()
   add_custom_target(kernel_nbody
-    COMMAND ${SDAccel_XOCC} ${NBODY_XOCC_COMMAND}) 
+    COMMAND ${SDAccel_XOCC} ${NBODY_XOCC_COMMAND})
   add_executable(RunNBody.exe host/RunNBody.cpp)
-  target_link_libraries(RunNBody.exe ${SDAccel_LIBRARIES} nbodykernel) 
+  target_link_libraries(RunNBody.exe ${SDAccel_LIBRARIES} nbodykernel)
 endif()

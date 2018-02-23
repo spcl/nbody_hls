@@ -17,4 +17,5 @@ constexpr unsigned kDims = ${NBODY_DIMS};
 constexpr unsigned kSteps = ${NBODY_STEPS};
 constexpr Data_t kTimestep = ${NBODY_TIMESTEP};
 constexpr float kFrequency = ${NBODY_TARGET_CLOCK};
-constexpr float eps = 0.001;
+constexpr float kEps2 = ${NBODY_SOFTENING_EPSILON};
+constexpr float kDamping = ${NBODY_DAMPING_FACTOR};
