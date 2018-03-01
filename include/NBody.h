@@ -85,9 +85,10 @@ inline Vec_t ComputeAccelerationSoftened(Data_t const &m1, Vec_t const &s0,
     }
     const Data_t distSquared =
     hlslib::TreeReduce<Data_t, hlslib::op::Add<Data_t>, kDims>(diffSquared);
-    const Data_t dist = std::sqrt(distSquared + kEps2);
-    const Data_t distCubed = dist * dist * dist;
-    const Data_t distCubedReciprocal = Data_t(1) / distCubed;
+    const Data_t distSoftened= distSquared + kEps2;
+    const Data_t distCubed = distSoftened * distSoftened * distSoftened;
+    const Data_t dist = std::sqrt(distCubed);
+    const Data_t distCubedReciprocal = Data_t(1) / dist;
     Vec_t acc;
     for (int d = 0; d < kDims; ++d) {
 #pragma HLS UNROLL

@@ -19,3 +19,4 @@ constexpr Data_t kTimestep = ${NBODY_TIMESTEP};
 constexpr float kFrequency = ${NBODY_TARGET_CLOCK};
 constexpr float kEps2 = ${NBODY_SOFTENING_EPSILON};
 constexpr float kDamping = ${NBODY_DAMPING_FACTOR};
+constexpr unsigned kDepthProcessingElement = ${NBODY_DEPTH_PROCESSING_ELEMENT};
