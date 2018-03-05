@@ -13,15 +13,15 @@ set(NBODY_TARGET_CLOCK_UNCERTAINTY 1.08 CACHE STRING "Clock uncertainty for HLS.
 
 # Domain options
 set(NBODY_DATA_TYPE "float" CACHE STRING "Matrix data type.")
-set(NBODY_KERNEL_WIDTH 4 CACHE STRING "Kernel data path width in number of operands.")
+set(NBODY_N 1024 CACHE STRING "Number of bodies.")
 set(NBODY_STEPS 16 CACHE STRING "Number of timesteps.")
 set(NBODY_DIMS 3 CACHE STRING "Number of dimensions.")
 set(NBODY_TIMESTEP 0.01 CACHE STRING "Size of each timestep.")
-set(NBODY_SIZE 1024 CACHE STRING "Number of bodies.")
-set(NBODY_TILE_SIZE 4 CACHE STRING "Tile size.")
-set(NBODY_SOFTENING_EPSILON 0.00125 CACHE STRING "Epsilon used for Softening.")
+set(NBODY_UNROLL_DEPTH 4 CACHE STRING "Tile size for depth unrolling.")
+set(NBODY_PIPELINE_FACTOR 16 CACHE STRING
+    "Factor to increase tile size for pipelining accumulations.")
+set(NBODY_SOFTENING_TERM 0.00125 CACHE STRING "Epsilon used for Softening.")
 set(NBODY_DAMPING_FACTOR 0.995 CACHE STRING "Damping factor for velocity.")
-set(NBODY_DEPTH_PROCESSING_ELEMENT 16 CACHE STRING "Second Unroll.")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/hlslib/cmake)
 
@@ -51,10 +51,6 @@ add_executable(Stats src/Stats.cpp)
 add_executable(TestNBody test/TestNBody.cpp)
 target_link_libraries(TestNBody ${SDAccel_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} nbodykernel)
 add_test(TestNBody TestNBody)
-
-add_executable(TestNonDivisiblePack test/TestNonDivisiblePack.cpp)
-target_link_libraries(TestNonDivisiblePack ${SDAccel_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} nbodykernel)
-add_test(TestNonDivisiblePack TestNonDivisiblePack)
 
 set(NBODY_PROJECT_NAME "NBody")
 string(REPLACE ";" " " NBODY_SRC_SYNTHESIS "${NBODY_KERNEL_SRC}")

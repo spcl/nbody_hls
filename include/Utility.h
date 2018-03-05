@@ -9,64 +9,63 @@
 #include <vector>
 #include "NBody.h"
 
-void Reference(Data_t const mass[], Vec_t position[], Vec_t velocity[]) {
+void Reference(PosMass_t position[], Vec_t velocity[]) {
   for (int t = 0; t < kSteps; ++t) {
-    Vec_t v0new[kN];
-    Vec_t s0new[kN];
-    for (int n = 0; n < kN; ++n) {
+    Vec_t v0new[kNBodies];
+    PosMass_t s0new[kNBodies];
+    for (int n = 0; n < kNBodies; ++n) {
       const auto v0 = velocity[n];
       const auto s0 = position[n];
       Vec_t a;
       a[0] = 0.0;
       a[1] = 0.0;
       a[2] = 0.0;
-      for (int m = 0; m < kN; ++m) {
+      for (int m = 0; m < kNBodies; ++m) {
         // if (n == m) continue;
         const auto v1 = velocity[m];
         const auto s1 = position[m];
-        const auto m1 = mass[m];
-        a += ComputeAccelerationSoftened(m1, s0, s1);
+        a += ComputeAcceleration<true>(s0, s1);
       }
       for (int d = 0; d < kDims; d++) {
         v0new[n][d] = velocity[n][d] + a[d] * kTimestep;
         s0new[n][d] = position[n][d] + v0new[n][d] * kTimestep;
       }
+      s0new[n][kDims] = s0[kDims];
     }
-    for (int i = 0; i < kN; i++) {
+    for (int i = 0; i < kNBodies; i++) {
       velocity[i] = v0new[i];
       position[i] = s0new[i];
     }
   }
 }
 
-inline void interaction(Vec_t p1, Vec_t p2, Data_t m2, Vec_t *acc) {
+inline void Interaction(PosMass_t const &p1, PosMass_t const &p2, Vec_t *acc) {
   Vec_t r;
   r[0] = p2[0] - p1[0];
   r[1] = p2[1] - p1[1];
   r[2] = p2[2] - p1[2];
 
-  Data_t d2 = r[0] * r[0] + r[1] * r[1] + r[2] * r[2] + kEps2;
+  Data_t d2 = r[0] * r[0] + r[1] * r[1] + r[2] * r[2] + kSoftening;
 
   Data_t d6 = d2 * d2 * d2;
 
   Data_t fac = 1.0f / sqrt(d6);  // they cast to double in one file here
 
-  Data_t s = m2 * fac;
+  Data_t s = p2[3] * fac;
 
   (*acc)[0] = (*acc)[0] + r[0] * s;
   (*acc)[1] = (*acc)[1] + r[1] * s;
   (*acc)[2] = (*acc)[2] + r[2] * s;
 }
 
-inline void computeGraviation(Data_t const mass[], Vec_t position[],
-                              Vec_t force[]) {
-  for (int i = 0; i < kN; i++) {
+inline void ComputeGravitation(PosMass_t position[], Vec_t force[]) {
+  for (int i = 0; i < kNBodies; i++) {
     Vec_t acc;
     acc[0] = 0.0;
     acc[1] = 0.0;
     acc[2] = 0.0;
-    for (int j = 0; j < kN; j++) {
-      interaction(position[i], position[j], mass[j], &acc);
+    for (int j = 0; j < kNBodies; j++) {
+      Interaction(position[i], position[j], &acc);
     }
     force[i][0] = acc[0];
     force[i][1] = acc[1];
@@ -74,13 +73,12 @@ inline void computeGraviation(Data_t const mass[], Vec_t position[],
   }
 }
 
-inline void ReferenceLikeCUDA(Data_t const mass[], Vec_t position[],
-                              Vec_t velocity[]) {
+inline void ReferenceLikeCUDA(PosMass_t position[], Vec_t velocity[]) {
   for (int j = 0; j < kSteps; j++) {
-    Vec_t force[kN];
-    computeGraviation(mass, position, force);
+    Vec_t force[kNBodies];
+    ComputeGravitation(position, force);
 
-    for (int i = 0; i < kN; i++) {
+    for (int i = 0; i < kNBodies; i++) {
       Vec_t pos;
       Vec_t vel;
       Vec_t f;
