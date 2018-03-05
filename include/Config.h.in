@@ -20,3 +20,24 @@ constexpr float kFrequency = ${NBODY_TARGET_CLOCK};
 constexpr float kEps2 = ${NBODY_SOFTENING_EPSILON};
 constexpr float kDamping = ${NBODY_DAMPING_FACTOR};
 constexpr unsigned kDepthProcessingElement = ${NBODY_DEPTH_PROCESSING_ELEMENT};
+
+// Tiling scheme:
+//
+// T := kSteps
+// N := kN
+// K := kUnrollDepth
+// L := kPipelineFactor
+//
+// for t in 0:T
+//   for k in 0:K
+//     for l in 0:L
+//       load(i)
+//   for i in N/(K*L)
+//     for j in N
+//       load(j)
+//       for l in L
+//         parallel_for k in K
+//           compute
+//   for k in 0:K
+//     for l in 0:L
+//       store(i)
