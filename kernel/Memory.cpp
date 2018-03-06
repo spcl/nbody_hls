@@ -105,6 +105,7 @@ Time:
       memory[index] = pipe.Pop();
     }
   }
+  std::cout << "Finished writing back" << std::endl;
 }
 
 void RepeatFirstTile(hlslib::Stream<PosMass_t> &streamIn,
@@ -112,24 +113,22 @@ void RepeatFirstTile(hlslib::Stream<PosMass_t> &streamIn,
   hlslib::Stream<PosMass_t> buffer(kUnrollDepth * kPipelineFactor);
 Time:
   for (int t = 0; t < kSteps; ++t) {
-  Tiles:
-    for (int bn = 0; bn < kNTiles; ++bn) {
-    Memory:
-      for (int i = 0; i < kNBodies + (kUnrollDepth * kPipelineFactor); ++i) {
-        #pragma HLS LOOP_FLATTEN
-        #pragma HLS PIPELINE II=1
-        PosMass_t value;
-        if ((i < kUnrollDepth * kPipelineFactor) ||
-            (i >= 2 * kUnrollDepth * kPipelineFactor)) {
-          value = streamIn.Pop();
-        } else {
-          value = buffer.Pop();
-        }
-        if (i < kUnrollDepth * kPipelineFactor) {
-          buffer.Push(value);
-        }
-        streamOut.Push(value);
+  TilesMemoryFlattened:
+    for (int i = 0; i < kNTiles * kNBodies + (kUnrollDepth * kPipelineFactor);
+         ++i) {
+      #pragma HLS LOOP_FLATTEN
+      #pragma HLS PIPELINE II=1
+      PosMass_t value;
+      if ((i < kUnrollDepth * kPipelineFactor) ||
+          (i >= 2 * kUnrollDepth * kPipelineFactor)) {
+        value = streamIn.Pop();
+      } else {
+        value = buffer.Pop();
       }
+      if (i < kUnrollDepth * kPipelineFactor) {
+        buffer.Push(value);
+      }
+      streamOut.Push(value);
     }
   }
 }
