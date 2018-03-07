@@ -102,8 +102,8 @@ int main() {
         const auto diff = std::abs(position[i][d] - positionHardware[i][d]);
         if (diff >= 1e-4) {
           std::cerr << "Mismatch in hardware implementation at index " << i
-                    << ": " << position[i] << " (should be "
-                    << positionHardware[i] << ")." << std::endl;
+                    << ": " << positionHardware[i] << " (should be "
+                    << position[i] << ")." << std::endl;
           return 1;
         }
       }
