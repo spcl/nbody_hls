@@ -13,7 +13,7 @@ set(NBODY_TARGET_CLOCK_UNCERTAINTY 1.08 CACHE STRING "Clock uncertainty for HLS.
 
 # Domain options
 set(NBODY_DATA_TYPE "float" CACHE STRING "Matrix data type.")
-set(NBODY_N 1024 CACHE STRING "Number of bodies.")
+set(NBODY_N 128 CACHE STRING "Number of bodies.")
 set(NBODY_STEPS 16 CACHE STRING "Number of timesteps.")
 set(NBODY_DIMS 3 CACHE STRING "Number of dimensions.")
 set(NBODY_TIMESTEP 0.01 CACHE STRING "Size of each timestep.")
