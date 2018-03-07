@@ -70,17 +70,17 @@ int main() {
             << std::flush;
   NewAlgorithmReference(position.data(), velocity.data());
   std::cout << " Done.\n";
-  
+
   std::cout << "Running CUDA reference implementation..." << std::flush;
   ReferenceLikeCUDA(positionRef.data(), velocityRef.data());
   std::cout << " Done.\n";
-  
+
   std::cout << "Running emulation of hardware implementation..." << std::flush;
   NBody(reinterpret_cast<MemoryPack_t const *>(&positionHardware[0]),
         reinterpret_cast<MemoryPack_t *>(&positionHardware[0]),
         velocityHardware.data(), velocityHardware.data());
   std::cout << " Done.\n";
-  
+
   std::cout << "Verifying results..." << std::flush;
   constexpr int kPrintBodies = 20;
   for (int i = 0; i < kNBodies; ++i) {
@@ -102,8 +102,8 @@ int main() {
         const auto diff = std::abs(position[i][d] - positionHardware[i][d]);
         if (diff >= 1e-4) {
           std::cerr << "Mismatch in hardware implementation at index " << i
-                    << ": " << position[i] << " (should be "
-                    << positionHardware[i] << ")." << std::endl;
+                    << ": " << positionHardware[i] << " (should be "
+                    << position[i] << ")." << std::endl;
           return 1;
         }
       }
@@ -120,19 +120,19 @@ void NewAlgorithmReference(PosMass_t positionMass[], Vec_t velocity[]) {
     PosMass_t positionMassNew[kNBodies];
     Vec_t velocityNew[kNBodies];
     // is a datapack initialised to zero by default?
-    PosMass_t posWeight[2][kPipelineFactor][kUnrollDepth];
-    Vec_t acc[kPipelineFactor][kUnrollDepth];
+    PosMass_t posWeight[2][kUnrollDepth][kPipelineFactor];
+    Vec_t acc[kUnrollDepth][kPipelineFactor];
     int next = 0;
 
-    for (int i = 0; i < kPipelineFactor; i++) {
-      for (int j = 0; j < kUnrollDepth; j++) {
+    for (int i = 0; i < kUnrollDepth; i++) {
+      for (int j = 0; j < kPipelineFactor; j++) {
         for (int k = 0; k < kDims + 1; k++) {
-          posWeight[0][i][j][k] = positionMass[i * kUnrollDepth + j][k];
+          posWeight[0][i][j][k] = positionMass[i * kPipelineFactor + j][k];
           if (k != kDims) acc[i][j][k] = 0.0;
         }
       }
     }
-    for (int i = 0; i < kNBodies / (kUnrollDepth * kPipelineFactor); i++) {
+    for (int i = 0; i < kNBodies / (kPipelineFactor * kUnrollDepth); i++) {
       next = 1 - next;
       for (int j = 0; j < kNBodies; j++) {
         PosMass_t currentPos;
@@ -140,53 +140,44 @@ void NewAlgorithmReference(PosMass_t positionMass[], Vec_t velocity[]) {
           currentPos[k] = positionMass[j][k];
 
           // Here I populate the next buffer with appropriate elments.
-          if (j >= (i + 1) * kUnrollDepth * kPipelineFactor &&
-              j < (i + 2) * kUnrollDepth * kPipelineFactor &&
-              i != kNBodies / (kUnrollDepth * kPipelineFactor) - 1) {
-            int a = j - (i + 1) * kUnrollDepth * kPipelineFactor;
-            posWeight[next][a / kUnrollDepth][a % kUnrollDepth][k] =
+          if (j >= (i + 1) * kPipelineFactor * kUnrollDepth &&
+              j < (i + 2) * kPipelineFactor * kUnrollDepth &&
+              i != kNBodies / (kPipelineFactor * kUnrollDepth) - 1) {
+            int a = j - (i + 1) * kPipelineFactor * kUnrollDepth;
+            posWeight[next][a / kPipelineFactor][a % kPipelineFactor][k] =
                 currentPos[k];
           }
         }
         // Now comes the second unroll, this time per processing element
-        for (int l = 0; l < kUnrollDepth; l++) {
+        for (int l = 0; l < kPipelineFactor; l++) {
           // The loop that is replicated in Hardware
-          for (int k = 0; k < kPipelineFactor; k++) {
-            PosMass_t s0;
-            PosMass_t s1;
-
-            // Accounts for the fact that ComputeAccelerationSoftened does not
-            // take posWeight args yet
-            for (int s = 0; s < kDims; s++) {
-              s0[s] = posWeight[1 - next][k][l][s];
-              s1[s] = currentPos[s];
-            }
-
-            Vec_t tmpacc = ComputeAcceleration<true>(s0, s1);
-
+          for (int k = 0; k < kUnrollDepth; k++) {
+            PosMass_t s0 = posWeight[1 - next][k][l];
+            // std::cout << s0;
+            Vec_t tmpacc = ComputeAcceleration<true>(s0, currentPos);
             // Write to buffer
             if (j != kNBodies - 1) {
-              for (int s = 0; s < kDims; s++) {
-                acc[k][l][s] = acc[k][l][s] + tmpacc[s];
-              }
+              acc[k][l] = acc[k][l] + tmpacc;
             } else {
               for (int s = 0; s < kDims; s++) {
                 // Writeout
                 Data_t v = (acc[k][l][s] + tmpacc[s]) * kTimestep;
-                float vel = velocity[i * (kUnrollDepth * kPipelineFactor) +
-                                     kUnrollDepth * k + l][s] +
+                float vel = velocity[i * (kPipelineFactor * kUnrollDepth) +
+                                     kPipelineFactor * k + l][s] +
                             v;
-                velocityNew[i * (kUnrollDepth * kPipelineFactor) +
-                            kUnrollDepth * k + l][s] = vel;
-                positionMassNew[i * (kUnrollDepth * kPipelineFactor) +
-                                kUnrollDepth * k + l][s] =
-                    positionMass[i * (kUnrollDepth * kPipelineFactor) +
-                                 kUnrollDepth * k + l][s] +
+                if(l == 0 && k == 0 && i == 0) std::cout << "refv " << vel - v << ";";
+                velocityNew[i * (kPipelineFactor * kUnrollDepth) +
+                            kPipelineFactor * k + l][s] = vel;
+                positionMassNew[i * (kPipelineFactor * kUnrollDepth) +
+                                kPipelineFactor * k + l][s] =
+                    positionMass[i * (kPipelineFactor * kUnrollDepth) +
+                                 kPipelineFactor * k + l][s] +
                     vel * kTimestep;
-
                 // reset acc
                 acc[k][l][s] = 0.0;
               }
+              positionMassNew[i * (kPipelineFactor * kUnrollDepth) +
+                              kPipelineFactor * k + l][kDims] = 1;
             }
           }
         }
@@ -195,7 +186,7 @@ void NewAlgorithmReference(PosMass_t positionMass[], Vec_t velocity[]) {
     // use swap buffers?
     for (int i = 0; i < kNBodies; i++) {
       velocity[i] = velocityNew[i];
-      positionMassNew[i] = positionMass[i];
+      positionMass[i] = positionMassNew[i];
     }
   }
 }
