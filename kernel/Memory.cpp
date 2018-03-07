@@ -105,7 +105,6 @@ Time:
       memory[index] = pipe.Pop();
     }
   }
-  std::cout << "Finished writing back" << std::endl;
 }
 
 void RepeatFirstTile(hlslib::Stream<PosMass_t> &streamIn,
