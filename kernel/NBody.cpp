@@ -62,31 +62,52 @@ void Compute(hlslib::Stream<PosMass_t> &posMassIn,
              hlslib::Stream<Vec_t> &velocityIn,
              hlslib::Stream<Vec_t> &velocityOut) {
   for (int t = 0; t < kSteps; ++t) {
-    
+    PosMass_t posWeightBuffer[2][kPipelineFactor][kUnrollDepth];
+    Vec_t acc[kPipelineFactor][kUnrollDepth];
+    int next = 0;
+
     // Buffer first tile
     for (int k = 0; k < kUnrollDepth; ++k) {
       for (int l = 0; l < kPipelineFactor; ++l) {
-        posMassIn.Pop();
+        posWeightBuffer[0][l][k] = posMassIn.Pop();
+        Vec_t a(static_cast<Data_t>(0));
+        acc[l][k] = a;
       }
     }
 
     // Loop over tiles
     for (int bn = 0; bn < kNTiles; ++bn) {
+      next = 1 - next;
       for (int i = 0; i < kNBodies; ++i) {
         PosMass_t s1 = posMassIn.Pop();
+        if (i >= (bn + 1) * kUnrollDepth * kPipelineFactor &&
+            i < (bn + 2) * kUnrollDepth * kPipelineFactor &&
+            bn != kNBodies / (kUnrollDepth * kPipelineFactor) - 1) {
+          int a = i - (bn + 1) * kUnrollDepth * kPipelineFactor;
+          posWeightBuffer[next][a / kUnrollDepth][a % kUnrollDepth] = s1;
+        }
         for (int l = 0; l < kPipelineFactor; ++l) {
           for (int k = 0; k < kUnrollDepth; ++k) {
-            // Do stuff  
-            s1 = s1;
+            PosMass_t s0 = posWeightBuffer[1 - next][l][k];
+
+            Vec_t tmpacc = ComputeAcceleration<true>(s0, s1);
+            acc[l][k] = acc[l][k] + tmpacc;
           }
         }
       }
       // Write out result
       for (int l = 0; l < kPipelineFactor; ++l) {
         for (int k = 0; k < kUnrollDepth; ++k) {
-          velocityIn.Pop();
-          posMassOut.Push(PosMass_t(5));
-          velocityOut.Push(Vec_t(5));
+          Vec_t vel = velocityIn.Pop();
+          PosMass_t pm = posWeightBuffer[1-next][l][k];
+          for (int s = 0; s < kDims; s++) {
+            vel[s] = vel[s] + acc[l][k][s]*kTimestep;
+            pm[s] = pm[s] + vel[s]*kTimestep;
+          }
+          posMassOut.Push(static_cast<Data_t>(0));
+          velocityOut.Push(vel);
+          Vec_t a(static_cast<Data_t>(0));
+          acc[l][k] = a;
         }
       }
     }
@@ -96,7 +117,7 @@ void Compute(hlslib::Stream<PosMass_t> &posMassIn,
 
 void NBody(MemoryPack_t const positionMassIn[], MemoryPack_t positionMassOut[],
            Vec_t const velocityIn[], Vec_t velocityOut[]) {
-           
+
   #pragma HLS INTERFACE m_axi port=positionMassIn offset=slave  bundle=gmem0
   #pragma HLS INTERFACE m_axi port=positionMassOut offset=slave bundle=gmem0
   #pragma HLS INTERFACE m_axi port=velocityIn offset=slave      bundle=gmem1
@@ -106,7 +127,7 @@ void NBody(MemoryPack_t const positionMassIn[], MemoryPack_t positionMassOut[],
   #pragma HLS INTERFACE s_axilite port=velocityIn      bundle=control
   #pragma HLS INTERFACE s_axilite port=velocityOut     bundle=control
   #pragma HLS INTERFACE s_axilite port=return          bundle=control
-  
+
   #pragma HLS DATAFLOW
 
   hlslib::Stream<MemoryPack_t> posMassInMemoryPipe("posMassInMemoryPipe");
