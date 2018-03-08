@@ -62,52 +62,57 @@ void Compute(hlslib::Stream<PosMass_t> &posMassIn,
              hlslib::Stream<Vec_t> &velocityIn,
              hlslib::Stream<Vec_t> &velocityOut) {
   for (int t = 0; t < kSteps; ++t) {
-    PosMass_t posWeightBuffer[2][kPipelineFactor][kUnrollDepth];
-    Vec_t acc[kPipelineFactor][kUnrollDepth];
+    PosMass_t posWeightBuffer[2][kUnrollDepth][kPipelineFactor];
+    Vec_t acc[kUnrollDepth][kPipelineFactor];
     int next = 0;
 
     // Buffer first tile
     for (int k = 0; k < kUnrollDepth; ++k) {
       for (int l = 0; l < kPipelineFactor; ++l) {
-        posWeightBuffer[0][l][k] = posMassIn.Pop();
+        posWeightBuffer[0][k][l] = posMassIn.Pop();
         Vec_t a(static_cast<Data_t>(0));
-        acc[l][k] = a;
+        acc[k][l] = a;
       }
     }
-
     // Loop over tiles
     for (int bn = 0; bn < kNTiles; ++bn) {
       next = 1 - next;
       for (int i = 0; i < kNBodies; ++i) {
+        #pragma HLS PIPELINE II=1
         PosMass_t s1 = posMassIn.Pop();
         if (i >= (bn + 1) * kUnrollDepth * kPipelineFactor &&
             i < (bn + 2) * kUnrollDepth * kPipelineFactor &&
             bn != kNBodies / (kUnrollDepth * kPipelineFactor) - 1) {
           int a = i - (bn + 1) * kUnrollDepth * kPipelineFactor;
-          posWeightBuffer[next][a / kUnrollDepth][a % kUnrollDepth] = s1;
+          posWeightBuffer[next][a / kPipelineFactor][a % kPipelineFactor] = s1;
         }
+
         for (int l = 0; l < kPipelineFactor; ++l) {
+          #pragma HLS PIPELINE II=1
           for (int k = 0; k < kUnrollDepth; ++k) {
-            PosMass_t s0 = posWeightBuffer[1 - next][l][k];
+            #pragma HLS UNROLL
+            PosMass_t s0 = posWeightBuffer[1 - next][k][l];
 
             Vec_t tmpacc = ComputeAcceleration<true>(s0, s1);
-            acc[l][k] = acc[l][k] + tmpacc;
+            acc[k][l] = acc[k][l] + tmpacc;
           }
         }
       }
       // Write out result
-      for (int l = 0; l < kPipelineFactor; ++l) {
-        for (int k = 0; k < kUnrollDepth; ++k) {
+      for (int k = 0; k < kUnrollDepth; ++k) {
+        for (int l = 0; l < kPipelineFactor; ++l) {
           Vec_t vel = velocityIn.Pop();
-          PosMass_t pm = posWeightBuffer[1-next][l][k];
+          PosMass_t pm;
+          pm[kDims] = posWeightBuffer[1-next][k][l][kDims];
           for (int s = 0; s < kDims; s++) {
-            vel[s] = vel[s] + acc[l][k][s]*kTimestep;
+            pm[s] = posWeightBuffer[1-next][k][l][s];
+            vel[s] = vel[s] + acc[k][l][s]*kTimestep;
             pm[s] = pm[s] + vel[s]*kTimestep;
           }
-          posMassOut.Push(static_cast<Data_t>(0));
+          posMassOut.Push(pm);
           velocityOut.Push(vel);
           Vec_t a(static_cast<Data_t>(0));
-          acc[l][k] = a;
+          acc[k][l] = a;
         }
       }
     }

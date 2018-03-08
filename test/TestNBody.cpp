@@ -148,12 +148,12 @@ void NewAlgorithmReference(PosMass_t positionMass[], Vec_t velocity[]) {
                 currentPos[k];
           }
         }
+
         // Now comes the second unroll, this time per processing element
         for (int l = 0; l < kPipelineFactor; l++) {
           // The loop that is replicated in Hardware
           for (int k = 0; k < kUnrollDepth; k++) {
             PosMass_t s0 = posWeight[1 - next][k][l];
-            // std::cout << s0;
             Vec_t tmpacc = ComputeAcceleration<true>(s0, currentPos);
             // Write to buffer
             if (j != kNBodies - 1) {
@@ -165,7 +165,6 @@ void NewAlgorithmReference(PosMass_t positionMass[], Vec_t velocity[]) {
                 float vel = velocity[i * (kPipelineFactor * kUnrollDepth) +
                                      kPipelineFactor * k + l][s] +
                             v;
-                if(l == 0 && k == 0 && i == 0) std::cout << "refv " << vel - v << ";";
                 velocityNew[i * (kPipelineFactor * kUnrollDepth) +
                             kPipelineFactor * k + l][s] = vel;
                 positionMassNew[i * (kPipelineFactor * kUnrollDepth) +
@@ -177,7 +176,8 @@ void NewAlgorithmReference(PosMass_t positionMass[], Vec_t velocity[]) {
                 acc[k][l][s] = 0.0;
               }
               positionMassNew[i * (kPipelineFactor * kUnrollDepth) +
-                              kPipelineFactor * k + l][kDims] = 1;
+                              kPipelineFactor * k + l][kDims] = positionMass[i * (kPipelineFactor * kUnrollDepth) +
+                                              kPipelineFactor * k + l][kDims];
             }
           }
         }
