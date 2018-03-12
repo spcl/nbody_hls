@@ -9,6 +9,7 @@
 #include "hlslib/Operators.h"
 #include "hlslib/TreeReduce.h"
 #include "hlslib/Utility.h"
+#include "hlslib/Stream.h"
 
 constexpr int kMemoryWidth = kMemoryWidthBytes / sizeof(Data_t);
 
@@ -37,12 +38,15 @@ static_assert(kMemoryWidth % (kDims + 1) == 0,
 
 extern "C" {
 
-// void NBody(MemoryPack_t const mass[], Vec_t const positionIn[],
-//            Vec_t positionOut[], Vec_t const velocityIn[], Vec_t
-//            velocityOut[]);
+// void NBody(MemoryPack_t const positionMassIn[], MemoryPack_t positionMassOut[],
+//            Vec_t const velocityIn[], Vec_t velocityOut[]);
 
 void NBody(MemoryPack_t const positionMassIn[], MemoryPack_t positionMassOut[],
-           Vec_t const velocityIn[], Vec_t velocityOut[]);
+           MemoryPack_t const velocityIn[], MemoryPack_t velocityOut[],
+           hlslib::Stream<MemoryPack_t> &velocityReadMemory,
+           hlslib::Stream<Vec_t> &velocityReadKernel,
+           hlslib::Stream<Vec_t> &velocityWriteKernel,
+           hlslib::Stream<MemoryPack_t> &velocityWriteMemory);
 
 }
 

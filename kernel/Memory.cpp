@@ -145,19 +145,19 @@ Time:
   }
 }
 
-// Used for testing software. Does not work with AXI if kDims is 3 
-void ReadSingle_Velocity(Vec_t const memory[],
-                         hlslib::Stream<Vec_t> &pipe) {
-Time:
-  for (int t = 0; t < kSteps; ++t) {
-  Domain:
-    for (int i = 0; i < kNBodies; ++i) {
-      #pragma HLS LOOP_FLATTEN
-      #pragma HLS PIPELINE II=1
-      pipe.Push(memory[i]);
-    }
-  }
-}
+// // Used for testing software. Does not work with AXI if kDims is 3 
+// void ReadSingle_Velocity(Vec_t const memory[],
+//                          hlslib::Stream<Vec_t> &pipe) {
+// Time:
+//   for (int t = 0; t < kSteps; ++t) {
+//   Domain:
+//     for (int i = 0; i < kNBodies; ++i) {
+//       #pragma HLS LOOP_FLATTEN
+//       #pragma HLS PIPELINE II=1
+//       pipe.Push(memory[i]);
+//     }
+//   }
+// }
 
 void WriteMemory_Velocity(hlslib::Stream<MemoryPack_t> &pipe,
                           MemoryPack_t memory[]) {
@@ -172,16 +172,16 @@ Time:
   }
 }
 
-// Used for testing software. Does not work with AXI if kDims is 3 
-void WriteSingle_Velocity(hlslib::Stream<Vec_t> &pipe,
-                          Vec_t memory[]) {
-Time:
-  for (int t = 0; t < kSteps; ++t) {
-  Domain:
-    for (int i = 0; i < kNBodies; ++i) {
-      #pragma HLS LOOP_FLATTEN
-      #pragma HLS PIPELINE II=1
-      memory[i] = pipe.Pop();
-    }
-  }
-}
+// // Used for testing software. Does not work with AXI if kDims is 3 
+// void WriteSingle_Velocity(hlslib::Stream<Vec_t> &pipe,
+//                           Vec_t memory[]) {
+// Time:
+//   for (int t = 0; t < kSteps; ++t) {
+//   Domain:
+//     for (int i = 0; i < kNBodies; ++i) {
+//       #pragma HLS LOOP_FLATTEN
+//       #pragma HLS PIPELINE II=1
+//       memory[i] = pipe.Pop();
+//     }
+//   }
+// }

@@ -62,21 +62,30 @@ void Compute(hlslib::Stream<PosMass_t> &posMassIn,
              hlslib::Stream<Vec_t> &velocityIn,
              hlslib::Stream<Vec_t> &velocityOut) {
   for (int t = 0; t < kSteps; ++t) {
-    PosMass_t posWeightBuffer[2][kUnrollDepth][kPipelineFactor];
+
+    PosMass_t posWeightBuffer[kUnrollDepth][2*kPipelineFactor];
+    #pragma HLS ARRAY_PARTITION variable=posWeightBuffer dim=1 complete
+
     Vec_t acc[kUnrollDepth][kPipelineFactor];
+    #pragma HLS ARRAY_PARTITION variable=acc dim=1 complete
+
     int next = 0;
 
     // Buffer first tile
+  BufferFirstTile:
     for (int k = 0; k < kUnrollDepth; ++k) {
       for (int l = 0; l < kPipelineFactor; ++l) {
-        posWeightBuffer[0][k][l] = posMassIn.Pop();
+        #pragma HLS PIPELINE II=1
+        posWeightBuffer[k][l] = posMassIn.Pop();
         Vec_t a(static_cast<Data_t>(0));
         acc[k][l] = a;
       }
     }
     // Loop over tiles
+  ComputeTiles:
     for (int bn = 0; bn < kNTiles; ++bn) {
       next = 1 - next;
+    ComputeBodies:
       for (int i = 0; i < kNBodies; ++i) {
         #pragma HLS PIPELINE II=1
         PosMass_t s1 = posMassIn.Pop();
@@ -84,28 +93,40 @@ void Compute(hlslib::Stream<PosMass_t> &posMassIn,
             i < (bn + 2) * kUnrollDepth * kPipelineFactor &&
             bn != kNBodies / (kUnrollDepth * kPipelineFactor) - 1) {
           int a = i - (bn + 1) * kUnrollDepth * kPipelineFactor;
-          posWeightBuffer[next][a / kPipelineFactor][a % kPipelineFactor] = s1;
+          posWeightBuffer[a / kPipelineFactor]
+                         [a % kPipelineFactor + (next ? kPipelineFactor : 0)] =
+                             s1;
         }
 
+      ComputePipeline:
         for (int l = 0; l < kPipelineFactor; ++l) {
           #pragma HLS PIPELINE II=1
+        ComputeUnroll:
           for (int k = 0; k < kUnrollDepth; ++k) {
             #pragma HLS UNROLL
-            PosMass_t s0 = posWeightBuffer[1 - next][k][l];
+            PosMass_t s0 = posWeightBuffer[k][l + (next ? 0 : kPipelineFactor)];
+            #pragma HLS DEPENDENCE variable=posWeightBuffer inter false
 
             Vec_t tmpacc = ComputeAcceleration<true>(s0, s1);
             acc[k][l] = acc[k][l] + tmpacc;
+            #pragma HLS DEPENDENCE variable=acc inter false
           }
         }
       }
       // Write out result
+    WriteUnroll:
       for (int k = 0; k < kUnrollDepth; ++k) {
+      WritePipeline:
         for (int l = 0; l < kPipelineFactor; ++l) {
+          #pragma HLS PIPELINE II=1
           Vec_t vel = velocityIn.Pop();
           PosMass_t pm;
-          pm[kDims] = posWeightBuffer[1-next][k][l][kDims];
+          pm[kDims] =
+              posWeightBuffer[k][l + (next ? 0 : kPipelineFactor)][kDims];
+        WriteDims:
           for (int s = 0; s < kDims; s++) {
-            pm[s] = posWeightBuffer[1-next][k][l][s];
+            #pragma HLS UNROLL
+            pm[s] = posWeightBuffer[k][l + (next ? 0 : kPipelineFactor)][s];
             vel[s] = vel[s] + acc[k][l][s]*kTimestep;
             pm[s] = pm[s] + vel[s]*kTimestep;
           }
@@ -121,12 +142,20 @@ void Compute(hlslib::Stream<PosMass_t> &posMassIn,
 }
 
 void NBody(MemoryPack_t const positionMassIn[], MemoryPack_t positionMassOut[],
-           Vec_t const velocityIn[], Vec_t velocityOut[]) {
+           MemoryPack_t const velocityIn[], MemoryPack_t velocityOut[],
+           hlslib::Stream<MemoryPack_t> &velocityReadMemory,
+           hlslib::Stream<Vec_t> &velocityReadKernel,
+           hlslib::Stream<Vec_t> &velocityWriteKernel,
+           hlslib::Stream<MemoryPack_t> &velocityWriteMemory) {
 
   #pragma HLS INTERFACE m_axi port=positionMassIn offset=slave  bundle=gmem0
   #pragma HLS INTERFACE m_axi port=positionMassOut offset=slave bundle=gmem0
   #pragma HLS INTERFACE m_axi port=velocityIn offset=slave      bundle=gmem1
   #pragma HLS INTERFACE m_axi port=velocityOut offset=slave     bundle=gmem1
+  #pragma HLS INTERFACE axis port=velocityReadMemory
+  #pragma HLS INTERFACE axis port=velocityReadKernel
+  #pragma HLS INTERFACE axis port=velocityWriteMemory
+  #pragma HLS INTERFACE axis port=velocityWriteKernel
   #pragma HLS INTERFACE s_axilite port=positionMassIn  bundle=control
   #pragma HLS INTERFACE s_axilite port=positionMassOut bundle=control
   #pragma HLS INTERFACE s_axilite port=velocityIn      bundle=control
@@ -140,8 +169,6 @@ void NBody(MemoryPack_t const positionMassIn[], MemoryPack_t positionMassOut[],
   hlslib::Stream<PosMass_t> posMassInPipe("posMassInPipe");
   hlslib::Stream<PosMass_t> posMassInRepeatPipe("posMassInRepeatPipe");
   hlslib::Stream<PosMass_t> posMassOutPipe("posMassOutPipe");
-  hlslib::Stream<Vec_t> velocityInPipe("velocityInPipe");
-  hlslib::Stream<Vec_t> velocityOutPipe("velocityOutPipe");
 
   HLSLIB_DATAFLOW_INIT();
 
@@ -153,10 +180,19 @@ void NBody(MemoryPack_t const positionMassIn[], MemoryPack_t positionMassOut[],
 
   HLSLIB_DATAFLOW_FUNCTION(RepeatFirstTile, posMassInRepeatPipe, posMassInPipe);
 
-  HLSLIB_DATAFLOW_FUNCTION(ReadSingle_Velocity, velocityIn, velocityInPipe);
+  HLSLIB_DATAFLOW_FUNCTION(ReadMemory_Velocity, velocityIn, velocityReadMemory);
+
+#ifndef HLSLIB_SYNTHESIS
+  ::hlslib::_Dataflow::Get().AddFunction(
+      ConvertMemoryToNonDivisible<Data_t, kDims>, velocityReadMemory,
+      velocityReadKernel, kSteps * kNBodies);
+  ::hlslib::_Dataflow::Get().AddFunction(
+      ConvertNonDivisibleToMemory<Data_t, kDims>, velocityWriteKernel,
+      velocityWriteMemory, kSteps * kNBodies);
+#endif
 
   HLSLIB_DATAFLOW_FUNCTION(Compute, posMassInPipe, posMassOutPipe,
-                           velocityInPipe, velocityOutPipe);
+                           velocityReadKernel, velocityWriteKernel);
 
   HLSLIB_DATAFLOW_FUNCTION(ExpandWidth_PositionMass, posMassOutPipe,
                            posMassOutMemoryPipe);
@@ -164,7 +200,8 @@ void NBody(MemoryPack_t const positionMassIn[], MemoryPack_t positionMassOut[],
   HLSLIB_DATAFLOW_FUNCTION(WriteMemory_PositionMass, posMassOutMemoryPipe,
                            positionMassOut);
 
-  HLSLIB_DATAFLOW_FUNCTION(WriteSingle_Velocity, velocityOutPipe, velocityOut);
+  HLSLIB_DATAFLOW_FUNCTION(WriteMemory_Velocity, velocityWriteMemory,
+                           velocityOut);
 
   HLSLIB_DATAFLOW_FINALIZE();
 }
