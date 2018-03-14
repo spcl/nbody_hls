@@ -77,16 +77,14 @@ Time:
   for (int t = 0; t < kSteps; ++t) {
   Memory:
     for (int i = 0; i < kMemorySizePosition; ++i) {
-      MemoryPack_t mem;
+      hlslib::DataPack<PosMass_t, kVectorsPerMemory> mem;
     Kernel:
       for (int j = 0; j < kVectorsPerMemory; ++j) {
-        const auto read = narrow.Pop();
-        for (int k = 0; k < kDims + 1; ++k) {
-          #pragma HLS UNROLL
-          mem[j * (kDims + 1) + k] = read[k];
-        }
+        #pragma HLS LOOP_FLATTEN
+        #pragma HLS PIPELINE II=1
+        mem[j] = narrow.Pop();
         if (j == kVectorsPerMemory - 1) {
-          wide.Push(mem);
+          wide.Push(*reinterpret_cast<MemoryPack_t *>(&mem));
         }
       }
     }
