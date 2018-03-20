@@ -5,29 +5,6 @@
 #include "hlslib/Simulation.h"
 #include "hlslib/Stream.h"
 
-// Notes:
-// SoA seems like a good idea, but switching between dimensions becomes a pain,
-// because we will need to load the base elements twice. We also have to load
-// mass for every dimension.
-// We would only store pos_x and the next pos_x'.
-//
-// AoS is messy because of the wide fan-out of operations if we combine it with
-// SIMD. Perhaps this is okay if done carefully?
-// The advantage is that we only need to stream mass through once per all
-// dimensions, instead of per dimension. Additionally, we avoid the mess of
-// switching between dimensions, which doesn't pipeline well.
-//
-// Initially a pull architecture seemed good, since we would only have to read
-// and write velocity once per timestep. Unfortunately this would leave us with
-// the accumulation problem: we would be trying to accumulate every cycle in
-// the same variable.
-// Instead we try a push-based architecture, where each PE updates the input
-// acceleration with its own contribution. This means we have to read and write
-// velocities every iteration.
-// This in turn means considerably higher load on the memory bandwidth, but as
-// long as we stay under the bandwidth limit this should come at no hit to
-// performance.
-
 // Notes(Simon): The CUDA implementation assumes that the input is given by vectors of the
 // form (x, y, z, m), (better access pattern, might want to assume that as well?).
 // Cuda also alters the computation a little to avoid having values go to infinity, they claim
@@ -146,59 +123,33 @@ void Compute(hlslib::Stream<PosMass_t> &posMassIn,
              }
 }
 
-void Compute2(hlslib::Stream<PosMass_t> &posMassIn,
-             hlslib::Stream<PosMass_t> &posMassOut,
-             hlslib::Stream<Vec_t> &velocityIn,
-             hlslib::Stream<Vec_t> &velocityOut) {
+void DummyKernel(hlslib::Stream<PosMass_t> &posMassIn,
+                 hlslib::Stream<PosMass_t> &posMassOut,
+                 hlslib::Stream<Vec_t> &velocityIn,
+                 hlslib::Stream<Vec_t> &velocityOut) {
   for (int t = 0; t < kSteps; ++t) {
 
-    PosMass_t posWeightBuffer[kUnrollDepth][2*kPipelineFactor];
-    #pragma HLS ARRAY_PARTITION variable=posWeightBuffer dim=1 complete
-
-    Vec_t acc[kUnrollDepth][kPipelineFactor];
-    #pragma HLS ARRAY_PARTITION variable=acc dim=1 complete
-
-    int next = 0;
-
-    // Buffer first tile
-  BufferFirstTile:
+  BufferUnroll:
     for (int k = 0; k < kUnrollDepth; ++k) {
+    BufferPipeline:
       for (int l = 0; l < kPipelineFactor; ++l) {
         #pragma HLS PIPELINE II=1
-        posWeightBuffer[k][l] = posMassIn.Pop();
-        Vec_t a(static_cast<Data_t>(0));
-        acc[k][l] = a;
+        posMassIn.Pop();
       }
     }
-    // Loop over tiles
+
   ComputeTiles:
     for (int bn = 0; bn < kNTiles; ++bn) {
-      next = 1 - next;
     ComputeBodies:
       for (int i = 0; i < kNBodies; ++i) {
         #pragma HLS PIPELINE II=1
-        PosMass_t s1 = posMassIn.Pop();
-        if (i >= (bn + 1) * kUnrollDepth * kPipelineFactor &&
-            i < (bn + 2) * kUnrollDepth * kPipelineFactor &&
-            bn != kNBodies / (kUnrollDepth * kPipelineFactor) - 1) {
-          int a = i - (bn + 1) * kUnrollDepth * kPipelineFactor;
-          posWeightBuffer[a / kPipelineFactor]
-                         [a % kPipelineFactor + (next ? kPipelineFactor : 0)] =
-                             s1;
-        }
-
+        posMassIn.Pop();
       ComputePipeline:
         for (int l = 0; l < kPipelineFactor; ++l) {
           #pragma HLS PIPELINE II=1
         ComputeUnroll:
           for (int k = 0; k < kUnrollDepth; ++k) {
             #pragma HLS UNROLL
-            PosMass_t s0 = posWeightBuffer[k][l + (next ? 0 : kPipelineFactor)];
-            #pragma HLS DEPENDENCE variable=posWeightBuffer inter false
-            Vec_t tmpacc = ComputeAcceleration<true>(s0, s1);
-            // if(bn == 0 && k == 0 && l == 0) std::cout << tmpacc << std::endl;
-            acc[k][l] = acc[k][l] + tmpacc;
-            #pragma HLS DEPENDENCE variable=acc inter false
           }
         }
       }
@@ -208,21 +159,8 @@ void Compute2(hlslib::Stream<PosMass_t> &posMassIn,
       WritePipeline:
         for (int l = 0; l < kPipelineFactor; ++l) {
           #pragma HLS PIPELINE II=1
-          Vec_t vel = velocityIn.Pop();
-          PosMass_t pm;
-          pm[kDims] =
-              posWeightBuffer[k][l + (next ? 0 : kPipelineFactor)][kDims];
-        WriteDims:
-          for (int s = 0; s < kDims; s++) {
-            #pragma HLS UNROLL
-            pm[s] = posWeightBuffer[k][l + (next ? 0 : kPipelineFactor)][s];
-            vel[s] = vel[s] + acc[k][l][s]*kTimestep;
-            pm[s] = pm[s] + vel[s]*kTimestep;
-          }
-          posMassOut.Push(pm);
-          velocityOut.Push(vel);
-          Vec_t a(static_cast<Data_t>(0));
-          acc[k][l] = a;
+          velocityOut.Push(velocityIn.Pop());
+          posMassOut.Push(PosMass_t(5.));
         }
       }
     }

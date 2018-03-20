@@ -35,14 +35,9 @@ configure_file(include/Config.h.in Config.h)
 
 enable_testing()
 
-if(NOT NBODY_USE_SIMPLE)
-  set(NBODY_KERNEL_SRC
-      ${CMAKE_SOURCE_DIR}/kernel/NBody.cpp
-      ${CMAKE_SOURCE_DIR}/kernel/Memory.cpp)
-else()
-  set(NBODY_KERNEL_SRC
-      ${CMAKE_SOURCE_DIR}/kernel/NBody.cpp)
-endif()
+set(NBODY_KERNEL_SRC
+    ${CMAKE_SOURCE_DIR}/kernel/NBody.cpp
+    ${CMAKE_SOURCE_DIR}/kernel/Memory.cpp)
 add_library(nbodykernel ${NBODY_KERNEL_SRC})
 target_link_libraries(nbodykernel ${CMAKE_THREAD_LIBS_INIT})
 
@@ -52,6 +47,7 @@ add_executable(TestNBody test/TestNBody.cpp)
 target_link_libraries(TestNBody ${SDAccel_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} nbodykernel)
 add_test(TestNBody TestNBody)
 
+# HLS setup
 set(NBODY_PROJECT_NAME "NBody")
 string(REPLACE ";" " " NBODY_SRC_SYNTHESIS "${NBODY_KERNEL_SRC}")
 set(NBODY_ENTRY_FUNCTION "NBody")
@@ -63,29 +59,47 @@ endif()
 configure_file(scripts/Synthesis.tcl.in SynthesizeNBody.tcl)
 add_custom_target(synthesize_nbody
   COMMAND ${SDAccel_VIVADO_HLS} -f SynthesizeNBody.tcl)
+
+# Vivado project options
+set(DONUT_KERNEL_NAME nbody_kernel) 
+set(DONUT_KERNEL_DIRECTORY ${CMAKE_BINARY_DIR})
+set(DONUT_VENDOR_NAME SPCL)
+set(DONUT_TMP_DIR /tmp)
+set(DONUT_PART_NAME ${NBODY_PART_NAME})
+set(DONUT_SOURCES_DIRECTORY ${CMAKE_BINARY_DIR}/${NBODY_PROJECT_NAME}/${NBODY_PART_NAME}/syn/verilog)
+configure_file(scripts/config.tcl.in config.tcl)
+configure_file(hw/top.v.in top.v)
+
+# SDx kernel wizard custom RTL project
+add_custom_target(setup_project COMMAND ${CMAKE_SOURCE_DIR}/scripts/project_manager.py setup ${DONUT_KERNEL_NAME} ${SDAccel_VIVADO} ${CMAKE_BINARY_DIR} ${DONUT_TMP_DIR})
+add_custom_target(package_kernel COMMAND ${CMAKE_SOURCE_DIR}/scripts/project_manager.py package ${DONUT_KERNEL_NAME} ${SDAccel_VIVADO} ${CMAKE_BINARY_DIR} ${DONUT_TMP_DIR})
+
+# Remove Vivado project when running clean
+set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
+             ${DONUT_KERNEL_DIRECTORY}/${DONUT_KERNEL_NAME}_ex)
+
 if(SDAccel_FOUND)
   set(NBODY_XOCC_COMMAND
     -t hw
+    -l
     -O3
     -s
     -o NBody.xclbin
     -I${CMAKE_SOURCE_DIR}/include
     -I${CMAKE_SOURCE_DIR}/hlslib/include
     -I${CMAKE_BINARY_DIR}
-    ${NBODY_KERNEL_SRC}
+    ${DONUT_KERNEL_NAME}.xo 
     --kernel NBody
-    --xdevice ${NBODY_DSA_NAME}
+    --platform ${NBODY_DSA_NAME}
     --xp prop:kernel.${NBODY_ENTRY_FUNCTION}.kernel_flags="${CMAKE_CXX_FLAGS} -DNBODY_SYNTHESIS -DHLSLIB_SYNTHESIS"
-    # Matrices A and C use the same interface
-    --xp misc:map_connect=add.kernel.${NBODY_ENTRY_FUNCTION}_1.M_AXI_GMEM0.core.OCL_REGION_0.M00_AXI
-    --xp misc:map_connect=add.kernel.${NBODY_ENTRY_FUNCTION}_1.M_AXI_GMEM1.core.OCL_REGION_0.M00_AXI
-    --xp misc:map_connect=add.kernel.${NBODY_ENTRY_FUNCTION}_1.M_AXI_GMEM2.core.OCL_REGION_0.M01_AXI
+    --xp misc:map_connect=add.kernel.${DONUT_KERNEL_NAME}_1.m00_axi.core.OCL_REGION_0.M00_AXI
+    --xp misc:map_connect=add.kernel.${DONUT_KERNEL_NAME}_1.m01_axi.core.OCL_REGION_0.M01_AXI
     --max_memory_ports all)
   if(NBODY_TARGET_CLOCK GREATER 0)
     set(NBODY_XOCC_COMMAND ${NBODY_XOCC_COMMAND}
         --kernel_frequency ${NBODY_TARGET_CLOCK})
   endif()
-  add_custom_target(kernel_nbody
+  add_custom_target(build_kernel
     COMMAND ${SDAccel_XOCC} ${NBODY_XOCC_COMMAND})
   add_executable(RunNBody.exe host/RunNBody.cpp)
   target_link_libraries(RunNBody.exe ${SDAccel_LIBRARIES} nbodykernel)
