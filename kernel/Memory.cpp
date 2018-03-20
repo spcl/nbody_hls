@@ -1,6 +1,6 @@
 /// @author    Johannes de Fine Licht (johannes.definelicht@inf.ethz.ch)
-/// @date      January 2018 
-/// @copyright This software is copyrighted under the BSD 3-Clause License. 
+/// @date      January 2018
+/// @copyright This software is copyrighted under the BSD 3-Clause License.
 
 #include "Memory.h"
 
@@ -145,7 +145,7 @@ Time:
   }
 }
 
-// // Used for testing software. Does not work with AXI if kDims is 3 
+// // Used for testing software. Does not work with AXI if kDims is 3
 // void ReadSingle_Velocity(Vec_t const memory[],
 //                          hlslib::Stream<Vec_t> &pipe) {
 // Time:
@@ -172,7 +172,7 @@ Time:
   }
 }
 
-// // Used for testing software. Does not work with AXI if kDims is 3 
+// // Used for testing software. Does not work with AXI if kDims is 3
 // void WriteSingle_Velocity(hlslib::Stream<Vec_t> &pipe,
 //                           Vec_t memory[]) {
 // Time:
