@@ -57,7 +57,96 @@
 //   for k in 0:K
 //     for l in 0:L
 //       store(i)
+
 void Compute(hlslib::Stream<PosMass_t> &posMassIn,
+             hlslib::Stream<PosMass_t> &posMassOut,
+             hlslib::Stream<Vec_t> &velocityIn,
+             hlslib::Stream<Vec_t> &velocityOut,
+           int d) {
+            for (int t = 0; t < kSteps; ++t) {
+               PosMass_t posWeightBuffer[2*kPipelineFactor];
+               #pragma HLS ARRAY_PARTITION variable=posWeightBuffer dim=1 complete
+
+               Vec_t acc[kPipelineFactor];
+               #pragma HLS ARRAY_PARTITION variable=acc dim=1 complete
+
+               int next = 0;
+
+               for(int i = 0; i < (kUnrollDepth-d)*kPipelineFactor; i++){
+                 PosMass_t pm = posMassIn.Pop();
+                 if(i < (kUnrollDepth-1-d)*kPipelineFactor){
+                   posMassOut.Push(pm);
+                 }else{
+                   posWeightBuffer[i%kPipelineFactor] = pm;
+                   Vec_t a(static_cast<Data_t>(0));
+                   acc[i%kPipelineFactor] = a;
+                 }
+               }
+
+              for(int bn = 0; bn < kNTiles; bn++){
+                next = 1 - next;
+                for(int j = 0; j < kNBodies; j++){
+                  PosMass_t s1 = posMassIn.Pop();
+                  if(d != kUnrollDepth-1){
+                    posMassOut.Push(s1);
+                  }
+
+                  //should we buffer this value
+                  if (j >= (bn + 1) * kUnrollDepth * kPipelineFactor &&
+                      j < (bn + 2) * kUnrollDepth * kPipelineFactor &&
+                      bn != kNBodies / (kUnrollDepth * kPipelineFactor) - 1) {
+                    int a = j - (bn + 1) * kUnrollDepth * kPipelineFactor;
+                    if(a / kPipelineFactor == kUnrollDepth - d - 1){
+                      posWeightBuffer[a % kPipelineFactor + (next ? kPipelineFactor : 0)] = s1;
+                    }
+                  }
+
+                  ComputePipeline:
+                    for (int l = 0; l < kPipelineFactor; ++l) {
+                      #pragma HLS PIPELINE II=1
+                      PosMass_t s0 = posWeightBuffer[l + (next ? 0 : kPipelineFactor)];
+                      Vec_t tmpacc = ComputeAcceleration<true>(s0, s1);
+                      acc[l] = acc[l] + tmpacc;
+                      #pragma HLS DEPENDENCE variable=acc inter false
+                    }
+                }
+                for(int i = 0; i < kUnrollDepth; i++){
+                  for(int j = 0; j < kPipelineFactor; j++){
+                    if(i > kUnrollDepth - d - 1){
+                      PosMass_t pm = posMassIn.Pop();
+                      Vec_t vel = velocityIn.Pop();
+                      posMassOut.Push(pm);
+                      velocityOut.Push(vel);
+                    }else if(i == kUnrollDepth - d - 1){
+                      //Compute
+                      Vec_t vel = velocityIn.Pop();
+                      PosMass_t pm;
+                      pm[kDims] = posWeightBuffer[j + (next ? 0 : kPipelineFactor)][kDims];
+
+                      WriteDims:
+                        for (int s = 0; s < kDims; s++) {
+                          #pragma HLS UNROLL
+                          pm[s] = posWeightBuffer[j + (next ? 0 : kPipelineFactor)][s];
+                          vel[s] = vel[s] + acc[j][s]*kTimestep;
+                          pm[s] = pm[s] + vel[s]*kTimestep;
+                        }
+
+                      posMassOut.Push(pm);
+                      velocityOut.Push(vel);
+                      Vec_t a(static_cast<Data_t>(0));
+                      acc[j] = a;
+                    }else{
+                      Vec_t vel = velocityIn.Pop();
+                      PosMass_t s1;
+                      velocityOut.Push(vel);
+                    }
+                  }
+                }
+              }
+             }
+}
+
+void Compute2(hlslib::Stream<PosMass_t> &posMassIn,
              hlslib::Stream<PosMass_t> &posMassOut,
              hlslib::Stream<Vec_t> &velocityIn,
              hlslib::Stream<Vec_t> &velocityOut) {
@@ -106,8 +195,8 @@ void Compute(hlslib::Stream<PosMass_t> &posMassIn,
             #pragma HLS UNROLL
             PosMass_t s0 = posWeightBuffer[k][l + (next ? 0 : kPipelineFactor)];
             #pragma HLS DEPENDENCE variable=posWeightBuffer inter false
-
             Vec_t tmpacc = ComputeAcceleration<true>(s0, s1);
+            // if(bn == 0 && k == 0 && l == 0) std::cout << tmpacc << std::endl;
             acc[k][l] = acc[k][l] + tmpacc;
             #pragma HLS DEPENDENCE variable=acc inter false
           }
@@ -170,6 +259,9 @@ void NBody(MemoryPack_t const positionMassIn[], MemoryPack_t positionMassOut[],
   hlslib::Stream<PosMass_t> posMassInRepeatPipe("posMassInRepeatPipe");
   hlslib::Stream<PosMass_t> posMassOutPipe("posMassOutPipe");
 
+  hlslib::Stream<PosMass_t> pm_pipes[kUnrollDepth - 1];
+  hlslib::Stream<Vec_t> vel_pipes[kUnrollDepth - 1];
+
   HLSLIB_DATAFLOW_INIT();
 
   HLSLIB_DATAFLOW_FUNCTION(ReadMemory_PositionMass, positionMassIn,
@@ -191,8 +283,20 @@ void NBody(MemoryPack_t const positionMassIn[], MemoryPack_t positionMassOut[],
       velocityWriteMemory, kSteps * kNBodies);
 #endif
 
-  HLSLIB_DATAFLOW_FUNCTION(Compute, posMassInPipe, posMassOutPipe,
-                           velocityReadKernel, velocityWriteKernel);
+  // HLSLIB_DATAFLOW_FUNCTION(Compute, posMassInPipe, posMassOutPipe,
+  //                          velocityReadKernel, velocityWriteKernel);
+
+  HLSLIB_DATAFLOW_FUNCTION(Compute, posMassInPipe, pm_pipes[0],
+                           velocityReadKernel, vel_pipes[0], 0);
+
+  for(int i = 1; i < kUnrollDepth - 1; i++){
+      #pragma HLS UNROLL
+      HLSLIB_DATAFLOW_FUNCTION(Compute, pm_pipes[i-1], pm_pipes[i],
+                               vel_pipes[i-1], vel_pipes[i], i);
+  }
+
+  HLSLIB_DATAFLOW_FUNCTION(Compute, pm_pipes[kUnrollDepth - 2], posMassOutPipe,
+                           vel_pipes[kUnrollDepth - 2], velocityWriteKernel, kUnrollDepth - 1);
 
   HLSLIB_DATAFLOW_FUNCTION(ExpandWidth_PositionMass, posMassOutPipe,
                            posMassOutMemoryPipe);

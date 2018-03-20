@@ -64,12 +64,16 @@ int main() {
   std::vector<PosMass_t> positionRef(position);
   std::vector<Vec_t> velocityRef(velocity);
   std::vector<PosMass_t> positionHardware(position);
-  std::vector<Vec_t> velocityHardware(velocity);
-
+  std::vector<MemoryPack_t> velocityHardware((3*kNBodies*sizeof(Data_t))/sizeof(MemoryPack_t));
+  // std::cout << velocityHardware[1] << velocity[1];
   hlslib::Stream<MemoryPack_t> velocityReadMemory("velocityReadMemory");
   hlslib::Stream<MemoryPack_t> velocityWriteMemory("velocityWriteMemory");
   hlslib::Stream<Vec_t> velocityReadKernel("velocityReadKernel");
   hlslib::Stream<Vec_t> velocityWriteKernel("velocityWriteKernel");
+
+  for(int i = 0; i < 3*kNBodies; i++){
+    velocityHardware[i/(sizeof(MemoryPack_t)/sizeof(Data_t))][i%(sizeof(MemoryPack_t)/sizeof(Data_t))] = velocity[i/3][i%3];
+  }
 
   std::cout << "Running reference implementation of new algorithm..."
             << std::flush;
@@ -170,6 +174,8 @@ void NewAlgorithmReference(PosMass_t positionMass[], Vec_t velocity[]) {
               for (int s = 0; s < kDims; s++) {
                 // Writeout
                 Data_t v = (acc[k][l][s] + tmpacc[s]) * kTimestep;
+                //test
+                acc[k][l][s] = acc[k][l][s] + tmpacc[s];
                 float vel = velocity[i * (kPipelineFactor * kUnrollDepth) +
                                      kPipelineFactor * k + l][s] +
                             v;
@@ -180,9 +186,9 @@ void NewAlgorithmReference(PosMass_t positionMass[], Vec_t velocity[]) {
                     positionMass[i * (kPipelineFactor * kUnrollDepth) +
                                  kPipelineFactor * k + l][s] +
                     vel * kTimestep;
-                // reset acc
-                acc[k][l][s] = 0.0;
               }
+              Vec_t a(static_cast<Data_t>(0));
+              acc[k][l] = a;
               positionMassNew[i * (kPipelineFactor * kUnrollDepth) +
                               kPipelineFactor * k + l][kDims] = positionMass[i * (kPipelineFactor * kUnrollDepth) +
                                               kPipelineFactor * k + l][kDims];

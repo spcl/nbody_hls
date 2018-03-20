@@ -26,14 +26,14 @@ void RepeatFirstTile(hlslib::Stream<PosMass_t> &streamIn,
 void ReadMemory_Velocity(MemoryPack_t const memory[],
                          hlslib::Stream<MemoryPack_t> &pipe);
 
-// Used for testing software. Does not work with AXI if kDims is 3 
+// Used for testing software. Does not work with AXI if kDims is 3
 void ReadSingle_Velocity(Vec_t const memory[],
                          hlslib::Stream<Vec_t> &pipe);
 
 void WriteMemory_Velocity(hlslib::Stream<MemoryPack_t> &pipe,
                           MemoryPack_t memory[]);
 
-// Used for testing software. Does not work with AXI if kDims is 3 
+// Used for testing software. Does not work with AXI if kDims is 3
 void WriteSingle_Velocity(hlslib::Stream<Vec_t> &pipe,
                           Vec_t memory[]);
 
@@ -46,33 +46,36 @@ template <typename T, unsigned width>
 void ConvertMemoryToNonDivisible(
     hlslib::Stream<MemoryPack_t> &streamIn,
     hlslib::Stream<hlslib::DataPack<T, width>> &streamOut, int iterations) {
-  constexpr unsigned kOutBytes = sizeof(T) * width;
-  constexpr unsigned kOutBits = 8 * kOutBytes;
-  ap_uint<6> bytesRemaining = 0;
+  int dataRemaining = 0;
   MemoryPack_t curr;
   MemoryPack_t next;
-  ap_uint<kOutBits> out;
   for (unsigned i = 0; i < iterations; ++i) {
-    #pragma HLS PIPELINE II=1
-    if (bytesRemaining == 0) {
+    hlslib::DataPack<T, width> out;
+    if (dataRemaining == 0) {
       curr = streamIn.Pop();
-      out = curr.data().range(kOutBits - 1, 0);
-      bytesRemaining = bytesRemaining - kOutBytes;
-    } else if (bytesRemaining < kOutBytes) {
+      void * pnt = (void*) &curr;
+      for(int j = 0; j < width; j++){
+        out[j] = curr[j];
+      }
+      dataRemaining = sizeof(MemoryPack_t)/sizeof(Data_t) - width;
+    } else if (dataRemaining < width) {
       next = streamIn.Pop();
-      out.range(8 * bytesRemaining - 1, 0) = curr.data().range(
-          8 * kMemoryWidthBytes - 1, 8 * (kMemoryWidthBytes - bytesRemaining));
-      out.range(kOutBits - 1, 8 * bytesRemaining) =
-          next.data().range(8 * (kOutBytes - bytesRemaining) - 1, 0);
-      bytesRemaining = kMemoryWidthBytes - (kOutBytes - bytesRemaining);
+      for(int j = 0; j < width; j++){
+        if(j < dataRemaining){
+          out[j] = curr[j +  sizeof(MemoryPack_t)/sizeof(Data_t) - dataRemaining];
+        }else{
+          out[j] = next[j - dataRemaining];
+        }
+      }
       curr = next;
+      dataRemaining = sizeof(MemoryPack_t)/sizeof(Data_t) - width + dataRemaining;
     } else { // bytesRemaining >= kOutBytes
-      out = curr.data().range(
-          8 * (kMemoryWidthBytes + kOutBytes - bytesRemaining) - 1,
-          8 * (kMemoryWidthBytes - bytesRemaining));
-      bytesRemaining = bytesRemaining - kOutBytes;
+      for(int j = 0; j < width; j++){
+        out[j] = curr[j +  sizeof(MemoryPack_t)/sizeof(Data_t) - dataRemaining];
+      }
+      dataRemaining = dataRemaining - width;
     }
-    streamOut.Push(*reinterpret_cast<T const *>(&out));
+    streamOut.Push(out);
   }
 }
 
@@ -83,34 +86,30 @@ template <typename T, unsigned width>
 void ConvertNonDivisibleToMemory(
     hlslib::Stream<hlslib::DataPack<T, width>> &streamIn,
     hlslib::Stream<MemoryPack_t> &streamOut, unsigned iterations) {
-  constexpr unsigned kInBytes = sizeof(T) * width;
-  constexpr unsigned kInBits = 8 * kInBytes;
-  ap_uint<hlslib::ConstLog2(kMemoryWidthBytes)> bytesMissing =
-      kMemoryWidthBytes;
-  MemoryPack_t out;
+    int currentPos = 0;
+    const int size = sizeof(MemoryPack_t)/sizeof(Data_t);
+    MemoryPack_t out;
+    MemoryPack_t out2;
+    hlslib::DataPack<T, width> last;
   for (unsigned i = 0; i < iterations; ++i) {
-    #pragma HLS PIPELINE II=1
-    const auto readT = streamIn.Pop();
-    const auto read = *reinterpret_cast<ap_uint<kInBits> const *>(&readT);
-    if (bytesMissing == kInBytes) {
-      out.data().range(8 * kMemoryWidthBytes - 1,
-                       8 * (kMemoryWidthBytes - kInBytes)) = read;
-      bytesMissing = 64;
+    hlslib::DataPack<T, width> readT = streamIn.Pop();
+    if(size - currentPos > width){
+      for(int j = 0; j < width; j++){
+        out[currentPos++] = readT[j];
+      }
+    }else{
+      int offset = size - currentPos;
+      for(int j = 0; j < width; j++){
+        if(j < offset){
+          out[currentPos++] = readT[j];
+        }else{
+          out2[currentPos - size] = readT[j];
+          currentPos++;
+        }
+      }
       streamOut.Push(out);
-    } else if (bytesMissing < kInBytes) {
-      out.data().range(8 * kMemoryWidthBytes - 1,
-                       8 * (kMemoryWidthBytes - bytesMissing)) =
-          read.range(8 * bytesMissing - 1, 0);
-      MemoryPack_t next;
-      next.data().range(8 * (kInBytes - bytesMissing) - 1, 0) =
-          read.range(kInBits - 1, 8 * bytesMissing);
-      streamOut.Push(out);
-      out = next;
-      bytesMissing = 64 - kInBytes + bytesMissing;
-    } else {  // bytesMissing > kInBytes 
-      out.data().range(8 * (kMemoryWidthBytes - bytesMissing + kInBytes) - 1,
-                       8 * (kMemoryWidthBytes - bytesMissing)) = read;
-      bytesMissing = bytesMissing - kInBytes;
+      out = out2;
+      currentPos = currentPos - size;
     }
   }
 }
