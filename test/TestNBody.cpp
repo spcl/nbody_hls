@@ -6,12 +6,11 @@
 #include "NBody.h"
 #include "Utility.h"
 
-void NewAlgorithmReference(PosMass_t positionMass[],
-                           Vec_t velocity[]);
+void NewAlgorithmReference(PosMass_t positionMass[], Vec_t velocity[]);
 
 int main() {
   std::vector<Vec_t> velocity(kNBodies);
-  std::vector<PosMass_t> position(2 * kNBodies); // Double buffering
+  std::vector<PosMass_t> position(2 * kNBodies);  // Double buffering
 
   // maybe make those configurable in the future :), if we use them
   float clusterScale = 1.54f;
@@ -64,15 +63,18 @@ int main() {
   std::vector<PosMass_t> positionRef(position);
   std::vector<Vec_t> velocityRef(velocity);
   std::vector<PosMass_t> positionHardware(position);
-  std::vector<MemoryPack_t> velocityHardware((3*kNBodies*sizeof(Data_t))/sizeof(MemoryPack_t));
+  std::vector<MemoryPack_t> velocityHardware((3 * kNBodies * sizeof(Data_t)) /
+                                             sizeof(MemoryPack_t));
   // std::cout << velocityHardware[1] << velocity[1];
   hlslib::Stream<MemoryPack_t> velocityReadMemory("velocityReadMemory");
   hlslib::Stream<MemoryPack_t> velocityWriteMemory("velocityWriteMemory");
   hlslib::Stream<Vec_t> velocityReadKernel("velocityReadKernel");
   hlslib::Stream<Vec_t> velocityWriteKernel("velocityWriteKernel");
 
-  for(int i = 0; i < 3*kNBodies; i++){
-    velocityHardware[i/(sizeof(MemoryPack_t)/sizeof(Data_t))][i%(sizeof(MemoryPack_t)/sizeof(Data_t))] = velocity[i/3][i%3];
+  for (int i = 0; i < 3 * kNBodies; i++) {
+    velocityHardware[i / (sizeof(MemoryPack_t) / sizeof(Data_t))]
+                    [i % (sizeof(MemoryPack_t) / sizeof(Data_t))] =
+                        velocity[i / 3][i % 3];
   }
 
   std::cout << "Running reference implementation of new algorithm..."
@@ -87,18 +89,16 @@ int main() {
   std::cout << "Running emulation of hardware implementation..." << std::flush;
   NBody(reinterpret_cast<MemoryPack_t const *>(&positionHardware[0]),
         reinterpret_cast<MemoryPack_t *>(&positionHardware[0]),
-        reinterpret_cast<MemoryPack_t const *>(&velocityHardware[0]),
-        reinterpret_cast<MemoryPack_t *>(&velocityHardware[0]),
-        velocityReadMemory, velocityReadKernel, velocityWriteKernel,
-        velocityWriteMemory);
+        &velocityHardware[0], &velocityHardware[0], velocityReadMemory,
+        velocityReadKernel, velocityWriteKernel, velocityWriteMemory);
   std::cout << " Done.\n";
 
   std::cout << "Verifying results..." << std::flush;
   constexpr int kPrintBodies = 20;
   for (int i = 0; i < kNBodies; ++i) {
     if (i < kPrintBodies) {
-      std::cout << position[i] << " / " << positionRef[i] << ", "
-                << velocity[i] << " / " << velocityRef[i] << "\n";
+      std::cout << position[i] << " / " << positionRef[i] << ", " << velocity[i]
+                << " / " << velocityRef[i] << "\n";
     }
     for (int d = 0; d < kDims; ++d) {
       {
@@ -174,7 +174,7 @@ void NewAlgorithmReference(PosMass_t positionMass[], Vec_t velocity[]) {
               for (int s = 0; s < kDims; s++) {
                 // Writeout
                 Data_t v = (acc[k][l][s] + tmpacc[s]) * kTimestep;
-                //test
+                // test
                 acc[k][l][s] = acc[k][l][s] + tmpacc[s];
                 float vel = velocity[i * (kPipelineFactor * kUnrollDepth) +
                                      kPipelineFactor * k + l][s] +
@@ -190,8 +190,9 @@ void NewAlgorithmReference(PosMass_t positionMass[], Vec_t velocity[]) {
               Vec_t a(static_cast<Data_t>(0));
               acc[k][l] = a;
               positionMassNew[i * (kPipelineFactor * kUnrollDepth) +
-                              kPipelineFactor * k + l][kDims] = positionMass[i * (kPipelineFactor * kUnrollDepth) +
-                                              kPipelineFactor * k + l][kDims];
+                              kPipelineFactor * k + l][kDims] =
+                  positionMass[i * (kPipelineFactor * kUnrollDepth) +
+                               kPipelineFactor * k + l][kDims];
             }
           }
         }
