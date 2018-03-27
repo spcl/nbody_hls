@@ -5,6 +5,73 @@
 #include "NBody.h"
 #include "hlslib/SDAccel.h"
 
+std::vector<MemoryPack_t> PackVelocity(std::vector<Vec_t> const &velocity) {
+  std::cout << "Packing velocity vector..." << std::flush;
+  std::vector<MemoryPack_t> velocityMem(2 * kMemorySizeVelocity);
+  for (int i = 0; i < kDims * kNBodies; ++i) {
+    velocityMem[i / kMemoryWidth][i % kMemoryWidth] =
+        velocity[i / kDims][i % kDims];
+  }
+  std::cout << " Done." << std::endl;
+  return velocityMem;
+}
+
+std::vector<MemoryPack_t> PackPosition(std::vector<PosMass_t> const &position) {
+  std::cout << "Packing position vector..." << std::flush;
+  std::vector<MemoryPack_t> positionMem(2 * kMemorySizePosition);
+  for (int i = 0; i < (kDims + 1) * kNBodies; ++i) {
+    positionMem[i / kMemoryWidth][i % kMemoryWidth] =
+        position[i / (kDims + 1)][i % (kDims + 1)];
+  }
+  std::cout << " Done." << std::endl;
+  return positionMem;
+}
+
+std::vector<Vec_t> UnpackVelocity(
+    std::vector<MemoryPack_t> const &velocityMem) {
+  std::cout << "Unpacking velocity vector..." << std::flush;
+  std::vector<Vec_t> velocity(kDims * kNBodies);
+  for (int i = 0; i < kDims * kNBodies; ++i) {
+    velocity[i / kDims][i % kDims] =
+        velocityMem[i / kMemoryWidth][i % kMemoryWidth];
+  }
+  std::cout << " Done." << std::endl;
+  return velocity;
+}
+
+std::vector<PosMass_t> UnpackPosition(
+    std::vector<MemoryPack_t> const &positionMem) {
+  std::cout << "Unpacking position vector..." << std::flush;
+  std::vector<PosMass_t> position((kDims + 1) * kNBodies);
+  for (int i = 0; i < (kDims + 1) * kNBodies; ++i) {
+    position[i / (kDims + 1)][i % (kDims + 1)] =
+        positionMem[i / kMemoryWidth][i % kMemoryWidth];
+  }
+  std::cout << " Done." << std::endl;
+  return position;
+}
+
+void RunSoftwareEmulation(std::vector<PosMass_t> &position,
+                          std::vector<Vec_t> &velocity) {
+
+  auto positionMem = PackPosition(position);
+  auto velocityMem = PackVelocity(velocity);
+
+  hlslib::Stream<MemoryPack_t> velocityReadMemory("velocityReadMemory");
+  hlslib::Stream<MemoryPack_t> velocityWriteMemory("velocityWriteMemory");
+  hlslib::Stream<Vec_t> velocityReadKernel("velocityReadKernel");
+  hlslib::Stream<Vec_t> velocityWriteKernel("velocityWriteKernel");
+
+  std::cout << "Running emulation of hardware implementation..." << std::flush;
+  NBody(&positionMem[0], &positionMem[0], &velocityMem[0], &velocityMem[0],
+        velocityReadMemory, velocityReadKernel, velocityWriteKernel,
+        velocityWriteMemory);
+  std::cout << " Done.\n";
+
+  position = UnpackPosition(positionMem);
+  velocity = UnpackVelocity(velocityMem);
+}
+
 int main(int argc, char **argv) {
 
   std::vector<Vec_t> velocity(kNBodies);
@@ -15,7 +82,7 @@ int main(int argc, char **argv) {
   float velocityScale = 8.0f;
 
   std::random_device rd;
-  std::default_random_engine rng(rd());
+  std::default_random_engine rng(5); // Use fixed seed
   std::uniform_real_distribution<double> distMass(1e10, 1e12);
   std::uniform_real_distribution<double> distVelocity(-1e3, 1e3);
   std::uniform_real_distribution<double> distPosition(-1e6, 1e6);
@@ -52,30 +119,11 @@ int main(int argc, char **argv) {
     i++;
   }
 
-  // NBody(reinterpret_cast<MemoryPack_t const *>(&mass[0]),
-  //       reinterpret_cast<MemoryPack_t const *>(&position[0]),
-  //       reinterpret_cast<MemoryPack_t *>(&position[0]),
-  //       reinterpret_cast<MemoryPack_t const *>(&velocity[0]),
-  //       reinterpret_cast<MemoryPack_t *>(&velocity[0]));
-
-  std::vector<PosMass_t> positionRef(position);
-  std::vector<Vec_t> velocityRef(velocity);
   std::vector<PosMass_t> positionHardware(position);
   std::vector<Vec_t> velocityHardware(velocity);
 
-  hlslib::Stream<MemoryPack_t> velocityReadMemory("velocityReadMemory");
-  hlslib::Stream<MemoryPack_t> velocityWriteMemory("velocityWriteMemory");
-  hlslib::Stream<Vec_t> velocityReadKernel("velocityReadKernel");
-  hlslib::Stream<Vec_t> velocityWriteKernel("velocityWriteKernel");
-
-  // std::cout << "Running reference implementation of new algorithm..."
-  //           << std::flush;
-  // NewAlgorithmReference(position.data(), velocity.data());
-  // std::cout << " Done.\n";
-  //
-  // std::cout << "Running CUDA reference implementation..." << std::flush;
-  // ReferenceLikeCUDA(positionRef.data(), velocityRef.data());
-  // std::cout << " Done.\n";
+  auto positionMem = PackPosition(position);
+  auto velocityMem = PackVelocity(velocity);
 
   try {
 
@@ -94,10 +142,8 @@ int main(int argc, char **argv) {
 
     auto startWithMemory = std::chrono::high_resolution_clock::now();
     std::cout << "Copying data to device..." << std::flush;
-    positionDevice.CopyFromHost(
-        reinterpret_cast<MemoryPack_t const *>(&positionHardware[0]));
-    velocityDevice.CopyFromHost(
-        reinterpret_cast<MemoryPack_t const *>(&velocityHardware[0]));
+    positionDevice.CopyFromHost(positionMem.cbegin());
+    velocityDevice.CopyFromHost(velocityMem.cbegin());
     std::cout << " Done.\n";
 
     std::cout << "Programming device..." << std::flush;
@@ -115,9 +161,12 @@ int main(int argc, char **argv) {
     //                   elapsed.first;
 
     std::cout << "Copying back result..." << std::flush;
-    positionDevice.CopyToHost(
-        reinterpret_cast<MemoryPack_t *>(&positionHardware[0]));
+    positionDevice.CopyToHost(&positionMem[0]);
+    velocityDevice.CopyToHost(&positionMem[0]);
     std::cout << " Done.\n";
+
+    positionHardware = UnpackPosition(positionMem);
+    velocityHardware = UnpackVelocity(velocityMem);
 
     auto endWithMemory = std::chrono::high_resolution_clock::now();
     auto elapsedWithMemory = (endWithMemory - startWithMemory).count();
@@ -133,24 +182,37 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  std::cout << "Verifying results..." << std::flush;
-  constexpr int kPrintBodies = 20;
+  std::vector<PosMass_t> positionRef(position);
+  std::vector<Vec_t> velocityRef(velocity);
+
+  RunSoftwareEmulation(positionRef, velocityRef);
+
+  std::cout << "Verifying results..." << std::endl;
+  constexpr int kPrintBodies = 0;
+  double totalDiff = 0;
   for (int i = 0; i < kNBodies; ++i) {
     if (i < kPrintBodies) {
-      std::cout << position[i] << " / " << positionRef[i] << ", "
-                << velocity[i] << " / " << velocityRef[i] << "\n";
+      std::cout << positionHardware[i] << " / " << positionRef[i] << ", "
+                << velocityHardware[i] << " / " << velocityRef[i] << "\n";
     }
     for (int d = 0; d < kDims; ++d) {
-      const auto diff = std::abs(position[i][d] - positionHardware[i][d]);
-      if (diff >= 1e-4) {
-        std::cerr << "Mismatch in hardware implementation at index " << i
-                  << ": " << positionHardware[i] << " (should be "
-                  << position[i] << ")." << std::endl;
-        return 1;
-      }
+      const auto diff =
+          std::abs(positionHardware[i][d] - positionRef[i][d]);
+      totalDiff += diff;
+      // if (diff >= 1e-4) {
+      //   std::cerr << "Mismatch in hardware implementation at index " << i
+      //             << ": " << positionHardware[i] << " (should be "
+      //             << positionRef[i] << ")." << std::endl;
+      //   return 1;
+      // }
     }
   }
-  std::cout << " Done." << std::endl;
+  std::cout << "Total difference: " << totalDiff << std::endl;
+  if (totalDiff >= kNBodies * 1e-4) {
+    std::cerr << "Verification failed.";
+    return 1;
+  }
+  std::cout << "Done." << std::endl;
 
   return 0;
 }
