@@ -134,10 +134,10 @@ int main(int argc, char **argv) {
     std::cout << "Initializing device memory..." << std::flush;
     auto positionDevice =
         context.MakeBuffer<MemoryPack_t, hlslib::ocl::Access::readWrite>(
-            hlslib::ocl::MemoryBank::bank0, kMemorySizePosition);
+            hlslib::ocl::MemoryBank::bank0, positionMem.size());
     auto velocityDevice =
         context.MakeBuffer<MemoryPack_t, hlslib::ocl::Access::readWrite>(
-            hlslib::ocl::MemoryBank::bank1, kMemorySizeVelocity);
+            hlslib::ocl::MemoryBank::bank1, velocityMem.size());
     std::cout << " Done.\n";
 
     auto startWithMemory = std::chrono::high_resolution_clock::now();
@@ -162,7 +162,7 @@ int main(int argc, char **argv) {
 
     std::cout << "Copying back result..." << std::flush;
     positionDevice.CopyToHost(&positionMem[0]);
-    velocityDevice.CopyToHost(&positionMem[0]);
+    velocityDevice.CopyToHost(&velocityMem[0]);
     std::cout << " Done.\n";
 
     positionHardware = UnpackPosition(positionMem);
