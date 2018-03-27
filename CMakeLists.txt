@@ -69,6 +69,8 @@ set(DONUT_PART_NAME ${NBODY_PART_NAME})
 set(DONUT_SOURCES_DIRECTORY ${CMAKE_BINARY_DIR}/${NBODY_PROJECT_NAME}/${NBODY_PART_NAME}/syn/verilog)
 configure_file(scripts/config.tcl.in config.tcl)
 configure_file(hw/top.v.in top.v)
+configure_file(scripts/O_opt_design_pre.tcl data/sdx/xocc/O_opt_design_pre.tcl) 
+configure_file(scripts/optMap.xml data/sdx/xocc/optMap.xml) 
 
 # SDx kernel wizard custom RTL project
 add_custom_target(setup_project COMMAND ${CMAKE_SOURCE_DIR}/scripts/project_manager.py setup ${DONUT_KERNEL_NAME} ${SDAccel_VIVADO} ${CMAKE_BINARY_DIR} ${DONUT_TMP_DIR})
@@ -100,7 +102,7 @@ if(SDAccel_FOUND)
         --kernel_frequency ${NBODY_TARGET_CLOCK})
   endif()
   add_custom_target(build_kernel
-    COMMAND ${SDAccel_XOCC} ${NBODY_XOCC_COMMAND})
+    COMMAND XILINX_PATH=${CMAKE_BINARY_DIR} ${SDAccel_XOCC} ${NBODY_XOCC_COMMAND})
   add_executable(RunNBody.exe host/RunNBody.cpp)
   target_link_libraries(RunNBody.exe ${SDAccel_LIBRARIES} nbodykernel)
 endif()
