@@ -61,11 +61,17 @@ void RunSoftwareEmulation(std::vector<PosMass_t> &position,
   hlslib::Stream<MemoryPack_t> velocityWriteMemory("velocityWriteMemory");
   hlslib::Stream<Vec_t> velocityReadKernel("velocityReadKernel");
   hlslib::Stream<Vec_t> velocityWriteKernel("velocityWriteKernel");
+  hlslib::Stream<MemoryPack_t> positionMassReadMemory("positionMassReadMemory");
+  hlslib::Stream<MemoryPack_t> positionMassWriteMemory(
+      "positionMassWriteMemory");
+  hlslib::Stream<PosMass_t> positionMassReadKernel("positionMassReadKernel");
+  hlslib::Stream<PosMass_t> positionMassWriteKernel("positionMassWriteKernel");
 
   std::cout << "Running emulation of hardware implementation..." << std::flush;
   NBody(&positionMem[0], &positionMem[0], &velocityMem[0], &velocityMem[0],
-        velocityReadMemory, velocityReadKernel, velocityWriteKernel,
-        velocityWriteMemory);
+        velocityReadMemory, velocityReadKernel, positionMassReadMemory,
+        positionMassReadKernel, velocityWriteKernel, velocityWriteMemory,
+        positionMassWriteKernel, positionMassWriteMemory);
   std::cout << " Done.\n";
 
   position = UnpackPosition(positionMem);

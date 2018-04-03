@@ -45,8 +45,12 @@ void NBody(MemoryPack_t const positionMassIn[], MemoryPack_t positionMassOut[],
            MemoryPack_t const velocityIn[], MemoryPack_t velocityOut[],
            hlslib::Stream<MemoryPack_t> &velocityReadMemory,
            hlslib::Stream<Vec_t> &velocityReadKernel,
+           hlslib::Stream<MemoryPack_t> &positionMassReadMemory,
+           hlslib::Stream<PosMass_t> &positionMassReadKernel,
            hlslib::Stream<Vec_t> &velocityWriteKernel,
-           hlslib::Stream<MemoryPack_t> &velocityWriteMemory);
+           hlslib::Stream<MemoryPack_t> &velocityWriteMemory,
+           hlslib::Stream<PosMass_t> &positionMassWriteKernel,
+           hlslib::Stream<MemoryPack_t> &positionMassWriteMemory);
 
 }
 

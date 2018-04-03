@@ -11,12 +11,6 @@
 void ReadMemory_PositionMass(MemoryPack_t const memory[],
                              hlslib::Stream<MemoryPack_t> &pipe);
 
-void ContractWidth_PositionMass(hlslib::Stream<MemoryPack_t> &wide,
-                                hlslib::Stream<PosMass_t> &narrow);
-
-void ExpandWidth_PositionMass(hlslib::Stream<PosMass_t> &narrow,
-                              hlslib::Stream<MemoryPack_t> &wide);
-
 void WriteMemory_PositionMass(hlslib::Stream<MemoryPack_t> &pipe,
                               MemoryPack_t memory[]);
 
@@ -26,18 +20,16 @@ void RepeatFirstTile(hlslib::Stream<PosMass_t> &streamIn,
 void ReadMemory_Velocity(MemoryPack_t const memory[],
                          hlslib::Stream<MemoryPack_t> &pipe);
 
-// Used for testing software. Does not work with AXI if kDims is 3
-void ReadSingle_Velocity(Vec_t const memory[],
-                         hlslib::Stream<Vec_t> &pipe);
-
 void WriteMemory_Velocity(hlslib::Stream<MemoryPack_t> &pipe,
                           MemoryPack_t memory[]);
 
-// Used for testing software. Does not work with AXI if kDims is 3
-void WriteSingle_Velocity(hlslib::Stream<Vec_t> &pipe,
-                          Vec_t memory[]);
-
 #ifndef HLSLIB_SYNTHESIS
+
+void ContractWidth_PositionMass(hlslib::Stream<MemoryPack_t> &wide,
+                                hlslib::Stream<PosMass_t> &narrow);
+
+void ExpandWidth_PositionMass(hlslib::Stream<PosMass_t> &narrow,
+                              hlslib::Stream<MemoryPack_t> &wide);
 
 /// Takes a stream of wide memory accesses and converts it into elements of a
 /// size that do not divide into the memory width. When crossing a memory

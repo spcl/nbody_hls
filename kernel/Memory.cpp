@@ -42,55 +42,6 @@ Time:
   }
 }
 
-void ContractWidth_PositionMass(hlslib::Stream<MemoryPack_t> &wide,
-                                hlslib::Stream<PosMass_t> &narrow) {
-Time:
-  for (int t = 0; t < kSteps; ++t) {
-  Tiles:
-    for (int bn = 0; bn < kNTiles; ++bn) {
-    Memory:
-      for (int i = 0; i < kMemorySizePosition; ++i) {
-        MemoryPack_t mem;
-      Kernel:
-        for (int j = 0; j < kVectorsPerMemory; ++j) {
-          #pragma HLS LOOP_FLATTEN
-          #pragma HLS PIPELINE II=1
-          if (j == 0) {
-            mem = wide.Pop();
-          }
-          PosMass_t posMass;
-        VectorCopy:
-          for (int k = 0; k < kDims + 1; ++k) {
-            #pragma HLS UNROLL
-            posMass[k] = mem[j * (kDims + 1) + k];
-          }
-          narrow.Push(posMass);
-        }
-      }
-    }
-  }
-}
-
-void ExpandWidth_PositionMass(hlslib::Stream<PosMass_t> &narrow,
-                              hlslib::Stream<MemoryPack_t> &wide) {
-Time:
-  for (int t = 0; t < kSteps; ++t) {
-  Memory:
-    for (int i = 0; i < kMemorySizePosition; ++i) {
-      hlslib::DataPack<PosMass_t, kVectorsPerMemory> mem;
-    Kernel:
-      for (int j = 0; j < kVectorsPerMemory; ++j) {
-        #pragma HLS LOOP_FLATTEN
-        #pragma HLS PIPELINE II=1
-        mem[j] = narrow.Pop();
-        if (j == kVectorsPerMemory - 1) {
-          wide.Push(*reinterpret_cast<MemoryPack_t *>(&mem));
-        }
-      }
-    }
-  }
-}
-
 void WriteMemory_PositionMass(hlslib::Stream<MemoryPack_t> &pipe,
                               MemoryPack_t memory[]) {
 Time:
@@ -143,20 +94,6 @@ Time:
   }
 }
 
-// // Used for testing software. Does not work with AXI if kDims is 3
-// void ReadSingle_Velocity(Vec_t const memory[],
-//                          hlslib::Stream<Vec_t> &pipe) {
-// Time:
-//   for (int t = 0; t < kSteps; ++t) {
-//   Domain:
-//     for (int i = 0; i < kNBodies; ++i) {
-//       #pragma HLS LOOP_FLATTEN
-//       #pragma HLS PIPELINE II=1
-//       pipe.Push(memory[i]);
-//     }
-//   }
-// }
-
 void WriteMemory_Velocity(hlslib::Stream<MemoryPack_t> &pipe,
                           MemoryPack_t memory[]) {
 Time:
@@ -170,16 +107,55 @@ Time:
   }
 }
 
-// // Used for testing software. Does not work with AXI if kDims is 3
-// void WriteSingle_Velocity(hlslib::Stream<Vec_t> &pipe,
-//                           Vec_t memory[]) {
-// Time:
-//   for (int t = 0; t < kSteps; ++t) {
-//   Domain:
-//     for (int i = 0; i < kNBodies; ++i) {
-//       #pragma HLS LOOP_FLATTEN
-//       #pragma HLS PIPELINE II=1
-//       memory[i] = pipe.Pop();
-//     }
-//   }
-// }
+#ifndef HLSLIB_SYNTHESIS
+
+void ContractWidth_PositionMass(hlslib::Stream<MemoryPack_t> &wide,
+                                hlslib::Stream<PosMass_t> &narrow) {
+Time:
+  for (int t = 0; t < kSteps; ++t) {
+  Tiles:
+    for (int bn = 0; bn < kNTiles; ++bn) {
+    Memory:
+      for (int i = 0; i < kMemorySizePosition; ++i) {
+        MemoryPack_t mem;
+      Kernel:
+        for (int j = 0; j < kVectorsPerMemory; ++j) {
+          #pragma HLS LOOP_FLATTEN
+          #pragma HLS PIPELINE II=1
+          if (j == 0) {
+            mem = wide.Pop();
+          }
+          PosMass_t posMass;
+        VectorCopy:
+          for (int k = 0; k < kDims + 1; ++k) {
+            #pragma HLS UNROLL
+            posMass[k] = mem[j * (kDims + 1) + k];
+          }
+          narrow.Push(posMass);
+        }
+      }
+    }
+  }
+}
+
+void ExpandWidth_PositionMass(hlslib::Stream<PosMass_t> &narrow,
+                              hlslib::Stream<MemoryPack_t> &wide) {
+Time:
+  for (int t = 0; t < kSteps; ++t) {
+  Memory:
+    for (int i = 0; i < kMemorySizePosition; ++i) {
+      hlslib::DataPack<PosMass_t, kVectorsPerMemory> mem;
+    Kernel:
+      for (int j = 0; j < kVectorsPerMemory; ++j) {
+        #pragma HLS LOOP_FLATTEN
+        #pragma HLS PIPELINE II=1
+        mem[j] = narrow.Pop();
+        if (j == kVectorsPerMemory - 1) {
+          wide.Push(*reinterpret_cast<MemoryPack_t *>(&mem));
+        }
+      }
+    }
+  }
+}
+
+#endif

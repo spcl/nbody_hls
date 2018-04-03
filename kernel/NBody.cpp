@@ -1,6 +1,5 @@
 #include "NBody.h"
 #include "Memory.h"
-#include "hls_stream.h"
 #include "hlslib/DataPack.h"
 #include "hlslib/Simulation.h"
 #include "hlslib/Stream.h"
@@ -193,10 +192,18 @@ void DummyKernel(hlslib::Stream<PosMass_t> &posMassIn,
 
 void NBody(MemoryPack_t const positionMassIn[], MemoryPack_t positionMassOut[],
            MemoryPack_t const velocityIn[], MemoryPack_t velocityOut[],
+           // 512-bit to 96-bit memory width conversion
            hlslib::Stream<MemoryPack_t> &velocityReadMemory,
            hlslib::Stream<Vec_t> &velocityReadKernel,
+           // 512-bit to 128-bit memory width conversion
+           hlslib::Stream<MemoryPack_t> &positionMassReadMemory,
+           hlslib::Stream<PosMass_t> &positionMassReadKernel,
+           // 96-bit to 512-bit memory width conversion
            hlslib::Stream<Vec_t> &velocityWriteKernel,
-           hlslib::Stream<MemoryPack_t> &velocityWriteMemory) {
+           hlslib::Stream<MemoryPack_t> &velocityWriteMemory,
+           // 128-bit to 512-bit memory width conversion
+           hlslib::Stream<PosMass_t> &positionMassWriteKernel,
+           hlslib::Stream<MemoryPack_t> &positionMassWriteMemory) {
 
   #pragma HLS INTERFACE m_axi port=positionMassIn offset=slave  bundle=gmem0
   #pragma HLS INTERFACE m_axi port=positionMassOut offset=slave bundle=gmem0
@@ -204,8 +211,12 @@ void NBody(MemoryPack_t const positionMassIn[], MemoryPack_t positionMassOut[],
   #pragma HLS INTERFACE m_axi port=velocityOut offset=slave     bundle=gmem1
   #pragma HLS INTERFACE axis port=velocityReadMemory
   #pragma HLS INTERFACE axis port=velocityReadKernel
+  #pragma HLS INTERFACE axis port=positionMassReadMemory
+  #pragma HLS INTERFACE axis port=positionMassReadKernel
   #pragma HLS INTERFACE axis port=velocityWriteMemory
   #pragma HLS INTERFACE axis port=velocityWriteKernel
+  #pragma HLS INTERFACE axis port=positionMassWriteMemory
+  #pragma HLS INTERFACE axis port=positionMassWriteKernel
   #pragma HLS INTERFACE s_axilite port=positionMassIn  bundle=control
   #pragma HLS INTERFACE s_axilite port=positionMassOut bundle=control
   #pragma HLS INTERFACE s_axilite port=velocityIn      bundle=control
@@ -214,53 +225,54 @@ void NBody(MemoryPack_t const positionMassIn[], MemoryPack_t positionMassOut[],
 
   #pragma HLS DATAFLOW
 
-  hlslib::Stream<MemoryPack_t> posMassInMemoryPipe("posMassInMemoryPipe");
-  hlslib::Stream<MemoryPack_t> posMassOutMemoryPipe("posMassOutMemoryPipe");
-  hlslib::Stream<PosMass_t> posMassInPipe("posMassInPipe");
-  hlslib::Stream<PosMass_t> posMassInRepeatPipe("posMassInRepeatPipe");
-  hlslib::Stream<PosMass_t> posMassOutPipe("posMassOutPipe");
+  hlslib::Stream<PosMass_t> positionMassRepeat("positionMassRepeat");
 
-  hlslib::Stream<PosMass_t> pm_pipes[kUnrollDepth - 1];
-  hlslib::Stream<Vec_t> vel_pipes[kUnrollDepth - 1];
+  hlslib::Stream<PosMass_t> positionMassPipes[kUnrollDepth - 1];
+  hlslib::Stream<Vec_t> velocityPipes[kUnrollDepth - 1];
 
   HLSLIB_DATAFLOW_INIT();
 
   HLSLIB_DATAFLOW_FUNCTION(ReadMemory_PositionMass, positionMassIn,
-                           posMassInMemoryPipe);
+                           positionMassReadMemory);
 
-  HLSLIB_DATAFLOW_FUNCTION(ContractWidth_PositionMass, posMassInMemoryPipe,
-                           posMassInRepeatPipe);
-
-  HLSLIB_DATAFLOW_FUNCTION(RepeatFirstTile, posMassInRepeatPipe, posMassInPipe);
+  HLSLIB_DATAFLOW_FUNCTION(RepeatFirstTile, positionMassReadKernel,
+                           positionMassRepeat);
 
   HLSLIB_DATAFLOW_FUNCTION(ReadMemory_Velocity, velocityIn, velocityReadMemory);
 
 #ifndef HLSLIB_SYNTHESIS
+  for (int i = 0; i < kUnrollDepth - 1; ++i) {
+    positionMassPipes[i].set_name(
+        ("positionMassPipes[" + std::to_string(i) + "]").c_str());
+    velocityPipes[i].set_name(
+        ("velocityPipes[" + std::to_string(i) + "]").c_str());
+  }
   ::hlslib::_Dataflow::Get().AddFunction(
       ConvertMemoryToNonDivisible<Data_t, kDims>, velocityReadMemory,
       velocityReadKernel, kSteps * kNBodies);
   ::hlslib::_Dataflow::Get().AddFunction(
       ConvertNonDivisibleToMemory<Data_t, kDims>, velocityWriteKernel,
       velocityWriteMemory, kSteps * kNBodies);
+  HLSLIB_DATAFLOW_FUNCTION(ContractWidth_PositionMass, positionMassReadMemory,
+                           positionMassReadKernel);
+  HLSLIB_DATAFLOW_FUNCTION(ExpandWidth_PositionMass, positionMassWriteKernel,
+                           positionMassWriteMemory);
 #endif
 
-  HLSLIB_DATAFLOW_FUNCTION(Compute, posMassInPipe, pm_pipes[0],
-                           velocityReadKernel, vel_pipes[0], 0);
+  HLSLIB_DATAFLOW_FUNCTION(Compute, positionMassRepeat, positionMassPipes[0],
+                           velocityReadKernel, velocityPipes[0], 0);
 
   for (int i = 1; i < kUnrollDepth - 1; i++) {
     #pragma HLS UNROLL
-    HLSLIB_DATAFLOW_FUNCTION(Compute, pm_pipes[i - 1], pm_pipes[i],
-                             vel_pipes[i - 1], vel_pipes[i], i);
+    HLSLIB_DATAFLOW_FUNCTION(Compute, positionMassPipes[i - 1], positionMassPipes[i],
+                             velocityPipes[i - 1], velocityPipes[i], i);
   }
 
-  HLSLIB_DATAFLOW_FUNCTION(Compute, pm_pipes[kUnrollDepth - 2], posMassOutPipe,
-                           vel_pipes[kUnrollDepth - 2], velocityWriteKernel,
-                           kUnrollDepth - 1);
+  HLSLIB_DATAFLOW_FUNCTION(Compute, positionMassPipes[kUnrollDepth - 2],
+                           positionMassWriteKernel, velocityPipes[kUnrollDepth - 2],
+                           velocityWriteKernel, kUnrollDepth - 1);
 
-  HLSLIB_DATAFLOW_FUNCTION(ExpandWidth_PositionMass, posMassOutPipe,
-                           posMassOutMemoryPipe);
-
-  HLSLIB_DATAFLOW_FUNCTION(WriteMemory_PositionMass, posMassOutMemoryPipe,
+  HLSLIB_DATAFLOW_FUNCTION(WriteMemory_PositionMass, positionMassWriteMemory,
                            positionMassOut);
 
   HLSLIB_DATAFLOW_FUNCTION(WriteMemory_Velocity, velocityWriteMemory,

@@ -65,11 +65,15 @@ int main() {
   std::vector<PosMass_t> positionHardware(position);
   std::vector<MemoryPack_t> velocityHardware((3 * kNBodies * sizeof(Data_t)) /
                                              sizeof(MemoryPack_t));
-  // std::cout << velocityHardware[1] << velocity[1];
   hlslib::Stream<MemoryPack_t> velocityReadMemory("velocityReadMemory");
   hlslib::Stream<MemoryPack_t> velocityWriteMemory("velocityWriteMemory");
   hlslib::Stream<Vec_t> velocityReadKernel("velocityReadKernel");
   hlslib::Stream<Vec_t> velocityWriteKernel("velocityWriteKernel");
+  hlslib::Stream<MemoryPack_t> positionMassReadMemory("positionMassReadMemory");
+  hlslib::Stream<MemoryPack_t> positionMassWriteMemory(
+      "positionMassWriteMemory");
+  hlslib::Stream<PosMass_t> positionMassReadKernel("positionMassReadKernel");
+  hlslib::Stream<PosMass_t> positionMassWriteKernel("positionMassWriteKernel");
 
   for (int i = 0; i < 3 * kNBodies; i++) {
     velocityHardware[i / (sizeof(MemoryPack_t) / sizeof(Data_t))]
@@ -90,11 +94,13 @@ int main() {
   NBody(reinterpret_cast<MemoryPack_t const *>(&positionHardware[0]),
         reinterpret_cast<MemoryPack_t *>(&positionHardware[0]),
         &velocityHardware[0], &velocityHardware[0], velocityReadMemory,
-        velocityReadKernel, velocityWriteKernel, velocityWriteMemory);
+        velocityReadKernel, positionMassReadMemory, positionMassReadKernel,
+        velocityWriteKernel, velocityWriteMemory, positionMassWriteKernel,
+        positionMassWriteMemory);
   std::cout << " Done.\n";
 
   std::cout << "Verifying results..." << std::flush;
-  constexpr int kPrintBodies = 20;
+  constexpr int kPrintBodies = 0;
   for (int i = 0; i < kNBodies; ++i) {
     if (i < kPrintBodies) {
       std::cout << position[i] << " / " << positionRef[i] << ", " << velocity[i]
