@@ -139,8 +139,8 @@ Time:
             if (d != 0) {
               // HLS cannot figure out that this never happens, so put an
               // explicit "assertion" here
-              const auto acc = accelerationIn.Pop();
-              accelerationOut.Push(acc);
+              const auto accRead = accelerationIn.Pop();
+              accelerationOut.Push(accRead);
             }
           }
         }
@@ -300,8 +300,8 @@ Time:
           if (d != 0) {
             // HLS cannot figure out that this never happens, so put an
             // explicit "assertion" here
-            const auto acc = accelerationIn.Pop();
-            accelerationOut.Push(acc);
+            const auto accRead = accelerationIn.Pop();
+            accelerationOut.Push(accRead);
           }
         }
 
