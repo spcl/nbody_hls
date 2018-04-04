@@ -286,35 +286,18 @@ Time:
   }
 }
 
-void DrainAcceleration(hlslib::Stream<Vec_t> &acc) {
-  for (int i = 0; i < kSteps * kNBodies; ++i) {
-    #pragma HLS PIPELINE II=1
-    acc.Pop();
-  }
-}
-
-void UpdateBodies(hlslib::Stream<PosMass_t> &posMassIn,
+void UpdateBodies(hlslib::Stream<Vec_t> &accelerationIn,
                   hlslib::Stream<Vec_t> &velocityIn,
-                  hlslib::Stream<Vec_t> &accelerationIn,
-                  hlslib::Stream<PosMass_t> &posMassOut,
-                  hlslib::Stream<Vec_t> &velocityOut) {
+                  hlslib::Stream<Vec_t> &velocityOut,
+                  hlslib::Stream<PosMass_t> &positionMassIn,
+                  hlslib::Stream<PosMass_t> &positionMassOut) {
   for (int t = 0; t < kSteps; ++t) {
     for (int i = 0; i < kNBodies; ++i) {
       #pragma HLS LOOP_FLATTEN
       #pragma HLS PIPELINE II=1
-      const auto pos = posMassIn.Pop();
-      const auto vel = velocityIn.Pop();
-      const auto acc = accelerationIn.Pop();
-      Vec_t velNew;
-      PosMass_t posNew;
-      for (int d = 0; d < kDims; d++) {
-        #pragma HLS UNROLL
-        velNew[d] = vel[d] + acc[d] * kTimestep;
-        posNew[d] = velNew[d] + velNew[d] * kTimestep;
-      }
-      posNew[kDims] = pos[kDims];
-      posMassOut.Push(posNew);
-      velocityOut.Push(velNew);
+      accelerationIn.Pop(),
+      velocityOut.Push(velocityIn.Pop());
+      positionMassOut.Push(positionMassIn.Pop());
     }
   }
 }
@@ -398,7 +381,7 @@ void NBody(MemoryPack_t const positionMassIn[], MemoryPack_t positionMassOut[],
                            velocityPipes[0], accelerationPipes[0],
                            accelerationPipes[1], 0);
 
-  for (int i = 1; i < kUnrollDepth - 1; i++) {
+  for (int i = 1; i < kUnrollDepth; i++) {
     #pragma HLS UNROLL
     HLSLIB_DATAFLOW_FUNCTION(ComputeSumUpEnd, positionMassPipes[i - 1],
                              positionMassPipes[i], velocityPipes[i - 1],
@@ -407,13 +390,12 @@ void NBody(MemoryPack_t const positionMassIn[], MemoryPack_t positionMassOut[],
   }
 
   HLSLIB_DATAFLOW_FUNCTION(
-      ComputeSumUpEnd, positionMassPipes[kUnrollDepth - 2],
-      positionMassWriteKernel, velocityPipes[kUnrollDepth - 2],
-      velocityWriteKernel, accelerationPipes[kUnrollDepth - 1],
-      accelerationPipes[kUnrollDepth], kUnrollDepth - 1);
-
-  HLSLIB_DATAFLOW_FUNCTION(
-      DrainAcceleration, accelerationPipes[kUnrollDepth]);
+      UpdateBodies,
+      accelerationPipes[kUnrollDepth],
+      velocityPipes[kUnrollDepth - 1],
+      velocityWriteKernel,
+      positionMassPipes[kUnrollDepth - 1],
+      positionMassWriteKernel);
 
   HLSLIB_DATAFLOW_FUNCTION(WriteMemory_PositionMass, positionMassWriteMemory,
                            positionMassOut);
