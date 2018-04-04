@@ -86,14 +86,16 @@ Time:
               posMassOut.Push(s1);
             }
 
-            if (j >= (bn + 1) * kUnrollDepth * kPipelineFactor &&
-                j < (bn + 2) * kUnrollDepth * kPipelineFactor) {
-              int a = j - (bn + 1) * kUnrollDepth * kPipelineFactor;
-              if (a / kPipelineFactor == kUnrollDepth - d - 1) {
-                posWeightBuffer[a % kPipelineFactor +
-                                (next ? kPipelineFactor : 0)] = s1;
-              }
+            // We currently hold values [bn*(K*L) + d*L, (bn+1)*(K*L) + d*L]
+            // We need values [bn*(K*L) + (d+1)*L, (bn+1)*(K*L) + (d+1)*L]
+            if (j >= ((bn + 1) * kUnrollDepth * kPipelineFactor +
+                      (kUnrollDepth - 1 - d) * kPipelineFactor) &&
+                j < ((bn + 1) * kUnrollDepth * kPipelineFactor +
+                     (kUnrollDepth - d) * kPipelineFactor)) {
+              posWeightBuffer[j % kPipelineFactor +
+                              (next ? kPipelineFactor : 0)] = s1;
             }
+
           }
           // End first loop iteration
 
@@ -220,15 +222,16 @@ Time:
             posMassOut.Push(s1);
           }
 
-          if (j >= (bn + 1) * kUnrollDepth * kPipelineFactor &&
-              j < (bn + 2) * kUnrollDepth * kPipelineFactor &&
-              bn != kNBodies / (kUnrollDepth * kPipelineFactor) - 1) {
-            int a = j - (bn + 1) * kUnrollDepth * kPipelineFactor;
-            if (a / kPipelineFactor == kUnrollDepth - d - 1) {
-              posWeightBuffer[a % kPipelineFactor +
-                              (next ? kPipelineFactor : 0)] = s1;
-            }
+          // We currently hold values [bn*(K*L) + d*L, (bn+1)*(K*L) + d*L]
+          // We need values [bn*(K*L) + (d+1)*L, (bn+1)*(K*L) + (d+1)*L]
+          if (j >= ((bn + 1) * kUnrollDepth * kPipelineFactor +
+                    (kUnrollDepth - 1 - d) * kPipelineFactor) &&
+              j < ((bn + 1) * kUnrollDepth * kPipelineFactor +
+                   (kUnrollDepth - d) * kPipelineFactor)) {
+            posWeightBuffer[j % kPipelineFactor +
+                            (next ? kPipelineFactor : 0)] = s1;
           }
+
         }
         // End first loop iteration
 
