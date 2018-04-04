@@ -38,6 +38,144 @@
 
 #ifndef NBODY_FLATTEN
 
+// void ComputeSumUpEnd(hlslib::Stream<PosMass_t> &posMassIn,
+//                      hlslib::Stream<PosMass_t> &posMassOut,
+//                      hlslib::Stream<Vec_t> &velocityIn,
+//                      hlslib::Stream<Vec_t> &velocityOut,
+//                      hlslib::Stream<Vec_t> &accIn,
+//                      hlslib::Stream<Vec_t> &accOut, int d) {
+// Time:
+//   for (int t = 0; t < kSteps; ++t) {
+//     PosMass_t posWeightBuffer[2 * kPipelineFactor];
+//     Vec_t acc[kPipelineFactor];
+//
+//     bool next = false;
+//
+//   SaturateBuffer:
+//     for (int i = 0; i < (kUnrollDepth - d) * kPipelineFactor; i++) {
+//       #pragma HLS PIPELINE II=1
+//       PosMass_t pm = posMassIn.Pop();
+//       if (i < (kUnrollDepth - 1 - d) * kPipelineFactor) {
+//         posMassOut.Push(pm);
+//       } else {
+//         posWeightBuffer[i % kPipelineFactor] = pm;
+//         Vec_t a(static_cast<Data_t>(0));
+//         acc[i % kPipelineFactor] = a;
+//       }
+//     }
+//
+//   ComputeTiles:
+//     for (int bn = 0; bn < kNTiles; bn++) {
+//     ComputeBodies:
+//       for (int j = 0; j < kNBodies; j++) {
+//         PosMass_t s1;
+//
+//       ComputePipeline:
+//         for (int l = 0; l < kPipelineFactor; ++l) {
+//           #pragma HLS PIPELINE II=1
+//           #pragma HLS LOOP_FLATTEN
+//
+//           if (j == 0 && l == 0) {
+//             next = !next;
+//           }
+//
+//           // First loop iteration
+//           if (l == 0) {
+//             s1 = posMassIn.Pop();
+//             if (d != kUnrollDepth - 1) {
+//               posMassOut.Push(s1);
+//             }
+//
+//             if (j >= (bn + 1) * kUnrollDepth * kPipelineFactor &&
+//                 j < (bn + 2) * kUnrollDepth * kPipelineFactor &&
+//                 bn != kNBodies / (kUnrollDepth * kPipelineFactor) - 1) {
+//               int a = j - (bn + 1) * kUnrollDepth * kPipelineFactor;
+//               if (a / kPipelineFactor == kUnrollDepth - d - 1) {
+//                 posWeightBuffer[a % kPipelineFactor +
+//                                 (next ? kPipelineFactor : 0)] = s1;
+//               }
+//             }
+//           }
+//           // End first loop iteration
+//
+//           // All iterations (actual compute)
+//           PosMass_t s0 = posWeightBuffer[l + (next ? 0 : kPipelineFactor)];
+//           #pragma HLS DEPENDENCE variable=posWeightBuffer inter false
+//           // TODO: is this dependence pragma safe? Can we use FIFOs?
+//           Vec_t tmpacc = ComputeAcceleration<true>(s0, s1);
+//           acc[l] = acc[l] + tmpacc;
+//           #pragma HLS DEPENDENCE variable=acc inter false
+//         }
+//       }
+//
+//     WriteDepth:
+//       for (int i = 0; i < kUnrollDepth; i++) {
+//       WritePipeline:
+//         for (int j = 0; j < kPipelineFactor; j++) {
+//           #pragma HLS PIPELINE II=1
+//           if (d == kUnrollDepth - 1) {
+//             // Compute
+//             if (i == 0) {
+//               Vec_t vel = velocityIn.Pop();
+//               PosMass_t pm;
+//               pm[kDims] =
+//                   posWeightBuffer[j + (next ? 0 : kPipelineFactor)][kDims];
+//
+//             WriteDimsFirst:
+//               for (int s = 0; s < kDims; s++) {
+//                 #pragma HLS UNROLL
+//                 pm[s] = posWeightBuffer[j + (next ? 0 : kPipelineFactor)][s];
+//                 vel[s] = vel[s] + acc[j][s] * kTimestep;
+//                 pm[s] = pm[s] + vel[s] * kTimestep;
+//               }
+//               posMassOut.Push(pm);
+//               velocityOut.Push(vel);
+//               Vec_t a(static_cast<Data_t>(0));
+//               acc[j] = a;
+//             } else {
+//               Vec_t vel = velocityIn.Pop();
+//               PosMass_t pm = posMassIn.Pop();
+//               Vec_t accP = accIn.Pop();
+//
+//             WriteDimsOther:
+//               for (int s = 0; s < kDims; s++) {
+//                 #pragma HLS UNROLL
+//                 vel[s] = vel[s] + accP[s] * kTimestep;
+//                 pm[s] = pm[s] + vel[s] * kTimestep;
+//               }
+//               posMassOut.Push(pm);
+//               velocityOut.Push(vel);
+//             }
+//
+//           } else {
+//             if (i > kUnrollDepth - d - 1) {
+//               PosMass_t pm = posMassIn.Pop();
+//               Vec_t vel = velocityIn.Pop();
+//               Vec_t accP = accIn.Pop();
+//
+//               posMassOut.Push(pm);
+//               velocityOut.Push(vel);
+//               accOut.Push(accP);
+//             } else if (i == kUnrollDepth - d - 1) {
+//               Vec_t vel = velocityIn.Pop();
+//               PosMass_t pm;
+//               pm = posWeightBuffer[j + (next ? 0 : kPipelineFactor)];
+//               posMassOut.Push(pm);
+//               velocityOut.Push(vel);
+//               accOut.Push(acc[j]);
+//               Vec_t a(static_cast<Data_t>(0));
+//               acc[j] = a;
+//             } else {
+//               Vec_t vel = velocityIn.Pop();
+//               velocityOut.Push(vel);
+//             }
+//           }
+//         }
+//       }
+//     }
+//   }
+// }
+
 void ComputeStage(hlslib::Stream<PosMass_t> &posMassIn,
                   hlslib::Stream<PosMass_t> &posMassOut,
                   hlslib::Stream<Vec_t> &velocityIn,
