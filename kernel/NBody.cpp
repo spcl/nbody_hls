@@ -250,9 +250,9 @@ Time:
         for (int j = 0; j < kPipelineFactor; j++) {
           #pragma HLS PIPELINE II=1
           if (i > kUnrollDepth - d - 1) {
-            PosMass_t pm = posMassIn.Pop();
-            Vec_t acc = accelerationIn.Pop();
-            Vec_t vel = velocityIn.Pop();
+            const auto pm = posMassIn.Pop();
+            const auto acc = accelerationIn.Pop();
+            const auto vel = velocityIn.Pop();
             posMassOut.Push(pm);
             velocityOut.Push(vel);
             accelerationOut.Push(acc);
@@ -260,16 +260,7 @@ Time:
             // Compute
             Vec_t vel = velocityIn.Pop();
             PosMass_t pm;
-            pm[kDims] =
-                posWeightBuffer[j + (next ? 0 : kPipelineFactor)][kDims];
-
-          WriteDims:
-            for (int s = 0; s < kDims; s++) {
-              #pragma HLS UNROLL
-              pm[s] = posWeightBuffer[j + (next ? 0 : kPipelineFactor)][s];
-              vel[s] = vel[s] + acc[j][s] * kTimestep;
-              pm[s] = pm[s] + vel[s] * kTimestep;
-            }
+            pm = posWeightBuffer[j + (next ? 0 : kPipelineFactor)];
 
             posMassOut.Push(pm);
             velocityOut.Push(vel);
@@ -291,13 +282,26 @@ void UpdateBodies(hlslib::Stream<Vec_t> &accelerationIn,
                   hlslib::Stream<Vec_t> &velocityOut,
                   hlslib::Stream<PosMass_t> &positionMassIn,
                   hlslib::Stream<PosMass_t> &positionMassOut) {
+Update_Steps:
   for (int t = 0; t < kSteps; ++t) {
+  Update_N:
     for (int i = 0; i < kNBodies; ++i) {
       #pragma HLS LOOP_FLATTEN
       #pragma HLS PIPELINE II=1
-      accelerationIn.Pop(),
-      velocityOut.Push(velocityIn.Pop());
-      positionMassOut.Push(positionMassIn.Pop());
+      const auto acc = accelerationIn.Pop();
+      const auto vel = velocityIn.Pop();
+      const auto pm = positionMassIn.Pop();
+      Vec_t velNew;
+      PosMass_t pmNew;
+    Update_Dims:
+      for (int d = 0; d < kDims; d++) {
+        #pragma HLS UNROLL
+        velNew[d] = vel[d] + acc[d] * kTimestep;
+        pmNew[d] = pm[d] + velNew[d] * kTimestep;
+      }
+      pmNew[kDims] = pm[kDims];
+      velocityOut.Push(velNew);
+      positionMassOut.Push(pmNew);
     }
   }
 }
