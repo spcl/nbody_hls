@@ -87,8 +87,7 @@ Time:
             }
 
             if (j >= (bn + 1) * kUnrollDepth * kPipelineFactor &&
-                j < (bn + 2) * kUnrollDepth * kPipelineFactor &&
-                bn != kNBodies / (kUnrollDepth * kPipelineFactor) - 1) {
+                j < (bn + 2) * kUnrollDepth * kPipelineFactor) {
               int a = j - (bn + 1) * kUnrollDepth * kPipelineFactor;
               if (a / kPipelineFactor == kUnrollDepth - d - 1) {
                 posWeightBuffer[a % kPipelineFactor +
@@ -180,10 +179,16 @@ Time:
     PosMass_t posWeightBuffer[2 * kPipelineFactor];
     Vec_t acc[kPipelineFactor];
 
-    if (state == State::saturating) {
-  SaturateBuffer:
-      for (int _s = 0; _s < (kUnrollDepth - d) * kPipelineFactor; ++_s) {
-        #pragma HLS PIPELINE II=1
+    PosMass_t s1;
+
+  Flattened:
+    for (int _i = 0; _i < (kUnrollDepth - d) * kPipelineFactor +
+                              kNTiles * ((kNBodies * kPipelineFactor) +
+                                         (kUnrollDepth * kPipelineFactor));
+         ++_i) {
+      if (state == State::saturating) {
+        // --------------------------------------------------------------------
+
         PosMass_t pm = posMassIn.Pop();
         if (s < (kUnrollDepth - 1 - d) * kPipelineFactor) {
           posMassOut.Push(pm);
@@ -199,17 +204,10 @@ Time:
         } else {
           ++s;
         }
-      }
-    }
 
-    PosMass_t s1;
-
-  Flattened:
-    for (int _bn = 0; _bn < kNTiles * ((kNBodies * kPipelineFactor) +
-                                       (kUnrollDepth * kPipelineFactor));
-         ++_bn) {
-
-      if (state == State::streaming) {
+        // --------------------------------------------------------------------
+      } else if (state == State::streaming) {
+        // --------------------------------------------------------------------
 
         if (j == 0 && l0 == 0) {
           next = !next;
@@ -254,7 +252,9 @@ Time:
           ++l0;
         }
 
-      } else { 
+        // --------------------------------------------------------------------
+      } else { // state == State::draining 
+        // --------------------------------------------------------------------
 
         if (k < kUnrollDepth - d - 1) {
           // Until own index is reached, forward velocities to their
@@ -305,9 +305,10 @@ Time:
           ++l1;
         }
 
+        // --------------------------------------------------------------------
       } // State == state::draining
 
-    } // Loop over blocks
+    } // Flattened loop 
   } // Loop over steps
 }
 
