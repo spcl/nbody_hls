@@ -10,6 +10,7 @@ set(NBODY_DSA_NAME "xilinx:xil-accel-rd-ku115:4ddr-xpr:4.0" CACHE STRING
     "DSA string for xocc.")
 set(NBODY_TARGET_CLOCK 250 CACHE STRING "Target clock for kernel (<=0 uses DSA default).")
 set(NBODY_TARGET_CLOCK_UNCERTAINTY 1.08 CACHE STRING "Clock uncertainty for HLS.")
+set(NBODY_FLATTEN OFF CACHE STRING "Flatten the loops to save cycles on saturating and draining the pipeline")
 
 # Domain options
 set(NBODY_DATA_TYPE "float" CACHE STRING "Matrix data type.")
@@ -30,6 +31,9 @@ find_package(Threads REQUIRED)
 
 include_directories(include hlslib/include ${CMAKE_BINARY_DIR} ${SDAccel_INCLUDE_DIRS})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+if(NBODY_FLATTEN)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNBODY_FLATTEN")
+endif()
 
 configure_file(include/Config.h.in Config.h)
 
