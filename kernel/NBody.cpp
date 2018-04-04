@@ -249,27 +249,35 @@ Time:
       WritePipeline:
         for (int j = 0; j < kPipelineFactor; j++) {
           #pragma HLS PIPELINE II=1
-          if (i > kUnrollDepth - d - 1) {
-            const auto pm = posMassIn.Pop();
-            const auto acc = accelerationIn.Pop();
-            const auto vel = velocityIn.Pop();
-            posMassOut.Push(pm);
-            velocityOut.Push(vel);
-            accelerationOut.Push(acc);
+          if (i < kUnrollDepth - d - 1) {
+            // Until own index is reached, forward velocities to their
+            // respective processing elements
+            velocityOut.Push(velocityIn.Pop());
           } else if (i == kUnrollDepth - d - 1) {
-            // Compute
-            Vec_t vel = velocityIn.Pop();
-            PosMass_t pm;
-            pm = posWeightBuffer[j + (next ? 0 : kPipelineFactor)];
-
+            // Once at our own index, push the final computed acceleration
+            // along with the positions and velocities
+            const Vec_t vel = velocityIn.Pop();
+            const PosMass_t pm =
+                posWeightBuffer[j + (next ? 0 : kPipelineFactor)];
             posMassOut.Push(pm);
             velocityOut.Push(vel);
             accelerationOut.Push(acc[j]);
-            Vec_t a(static_cast<Data_t>(0));
-            acc[j] = a;
+            // Reset accumulation variables
+            acc[j] = Vec_t(static_cast<Data_t>(0));
           } else {
-            Vec_t vel = velocityIn.Pop();
+            // For the remaining iterations, just forward the packaged/
+            // positions, velocities and accelerations of previous processing
+            // elements
+            const auto pm = posMassIn.Pop();
+            const auto vel = velocityIn.Pop();
+            posMassOut.Push(pm);
             velocityOut.Push(vel);
+            if (d != 0) {
+              // HLS cannot figure out that this never happens, so put an
+              // explicit "assertion" here
+              const auto acc = accelerationIn.Pop();
+              accelerationOut.Push(acc);
+            }
           }
         }
       }
