@@ -8,7 +8,7 @@ project(nbody_hls C CXX)
 set(NBODY_PART_NAME "xcku115-flvb2104-2-e" CACHE STRING "Part name for HLS.")
 set(NBODY_DSA_NAME "xilinx:xil-accel-rd-ku115:4ddr-xpr:4.0" CACHE STRING
     "DSA string for xocc.")
-set(NBODY_TARGET_CLOCK 250 CACHE STRING "Target clock for kernel (<=0 uses DSA default).")
+set(NBODY_TARGET_CLOCK 300 CACHE STRING "Target clock for kernel.")
 set(NBODY_TARGET_CLOCK_UNCERTAINTY 1.08 CACHE STRING "Clock uncertainty for HLS.")
 
 # Domain options
@@ -51,11 +51,6 @@ add_test(TestNBody TestNBody)
 set(NBODY_PROJECT_NAME "NBody")
 string(REPLACE ";" " " NBODY_SRC_SYNTHESIS "${NBODY_KERNEL_SRC}")
 set(NBODY_ENTRY_FUNCTION "NBody")
-if(NBODY_TARGET_CLOCK GREATER 0)
-  set(NBODY_TARGET_TIMING "${NBODY_TARGET_CLOCK}")
-else()
-  set(NBODY_TARGET_TIMING "5")
-endif()
 configure_file(scripts/Synthesis.tcl.in SynthesizeNBody.tcl)
 add_custom_target(synthesize_nbody
   COMMAND ${SDAccel_VIVADO_HLS} -f SynthesizeNBody.tcl)

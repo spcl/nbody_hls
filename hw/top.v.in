@@ -225,57 +225,107 @@ NBody nbody_hls (
     .m_axi_gmem1_BRESP(),
     .m_axi_gmem1_BID(m01_axi_bid),
     .m_axi_gmem1_BUSER(),
-    .velocityReadMemory_stream_V_data_V_TDATA(axis_read_memory_tdata),
-    .velocityReadKernel_stream_V_data_V_TDATA(axis_read_kernel_tdata),
-    .velocityWriteKernel_stream_V_data_V_TDATA(axis_write_kernel_tdata),
-    .velocityWriteMemory_stream_V_data_V_TDATA(axis_write_memory_tdata),
-    .velocityReadMemory_stream_V_data_V_TVALID(axis_read_memory_tvalid),
-    .velocityReadMemory_stream_V_data_V_TREADY(axis_read_memory_tready),
-    .velocityReadKernel_stream_V_data_V_TVALID(axis_read_kernel_tvalid),
-    .velocityReadKernel_stream_V_data_V_TREADY(axis_read_kernel_tready),
-    .velocityWriteKernel_stream_V_data_V_TVALID(axis_write_kernel_tvalid),
-    .velocityWriteKernel_stream_V_data_V_TREADY(axis_write_kernel_tready),
-    .velocityWriteMemory_stream_V_data_V_TVALID(axis_write_memory_tvalid),
-    .velocityWriteMemory_stream_V_data_V_TREADY(axis_write_memory_tready)
+    .velocityReadMemory_stream_V_data_V_TDATA(axis_velocity_read_memory_tdata),
+    .velocityReadKernel_stream_V_data_V_TDATA(axis_velocity_read_kernel_tdata),
+    .velocityWriteKernel_stream_V_data_V_TDATA(axis_velocity_write_kernel_tdata),
+    .velocityWriteMemory_stream_V_data_V_TDATA(axis_velocity_write_memory_tdata),
+    .velocityReadMemory_stream_V_data_V_TVALID(axis_velocity_read_memory_tvalid),
+    .velocityReadMemory_stream_V_data_V_TREADY(axis_velocity_read_memory_tready),
+    .velocityReadKernel_stream_V_data_V_TVALID(axis_velocity_read_kernel_tvalid),
+    .velocityReadKernel_stream_V_data_V_TREADY(axis_velocity_read_kernel_tready),
+    .velocityWriteKernel_stream_V_data_V_TVALID(axis_velocity_write_kernel_tvalid),
+    .velocityWriteKernel_stream_V_data_V_TREADY(axis_velocity_write_kernel_tready),
+    .velocityWriteMemory_stream_V_data_V_TVALID(axis_velocity_write_memory_tvalid),
+    .velocityWriteMemory_stream_V_data_V_TREADY(axis_velocity_write_memory_tready),
+    .positionMassReadMemory_stream_V_data_V_TDATA(axis_position_read_memory_tdata),
+    .positionMassReadKernel_stream_V_data_V_TDATA(axis_position_read_kernel_tdata),
+    .positionMassWriteKernel_stream_V_data_V_TDATA(axis_position_write_kernel_tdata),
+    .positionMassWriteMemory_stream_V_data_V_TDATA(axis_position_write_memory_tdata),
+    .positionMassReadMemory_stream_V_data_V_TVALID(axis_position_read_memory_tvalid),
+    .positionMassReadMemory_stream_V_data_V_TREADY(axis_position_read_memory_tready),
+    .positionMassReadKernel_stream_V_data_V_TVALID(axis_position_read_kernel_tvalid),
+    .positionMassReadKernel_stream_V_data_V_TREADY(axis_position_read_kernel_tready),
+    .positionMassWriteKernel_stream_V_data_V_TVALID(axis_position_write_kernel_tvalid),
+    .positionMassWriteKernel_stream_V_data_V_TREADY(axis_position_write_kernel_tready),
+    .positionMassWriteMemory_stream_V_data_V_TVALID(axis_position_write_memory_tvalid),
+    .positionMassWriteMemory_stream_V_data_V_TREADY(axis_position_write_memory_tready)
 );
 
-// Memory to kernel converter
-wire axis_read_memory_tvalid;
-wire axis_read_memory_tready;
-wire [511:0] axis_read_memory_tdata;
-wire axis_read_kernel_tvalid;
-wire axis_read_kernel_tready;
-wire [95:0] axis_read_kernel_tdata;
+// Velocity memory to kernel converter
+wire axis_velocity_read_memory_tvalid;
+wire axis_velocity_read_memory_tready;
+wire [511:0] axis_velocity_read_memory_tdata;
+wire axis_velocity_read_kernel_tvalid;
+wire axis_velocity_read_kernel_tready;
+wire [95:0] axis_velocity_read_kernel_tdata;
 
-memory_to_kernel_converter memory_to_kernel (
+velocity_memory_to_kernel_converter velocity_memory_to_kernel (
   .aclk(ap_clk),
   .aresetn(ap_rst_n),
-  .s_axis_tvalid(axis_read_memory_tvalid),
-  .s_axis_tready(axis_read_memory_tready),
-  .s_axis_tdata(axis_read_memory_tdata),
-  .m_axis_tvalid(axis_read_kernel_tvalid),
-  .m_axis_tready(axis_read_kernel_tready),
-  .m_axis_tdata(axis_read_kernel_tdata)
+  .s_axis_tvalid(axis_velocity_read_memory_tvalid),
+  .s_axis_tready(axis_velocity_read_memory_tready),
+  .s_axis_tdata(axis_velocity_read_memory_tdata),
+  .m_axis_tvalid(axis_velocity_read_kernel_tvalid),
+  .m_axis_tready(axis_velocity_read_kernel_tready),
+  .m_axis_tdata(axis_velocity_read_kernel_tdata)
 );
 
-// Kernel to memory converter 
-wire axis_write_kernel_tvalid;
-wire axis_write_kernel_tready;
-wire [95:0] axis_write_kernel_tdata;
-wire axis_write_memory_tvalid;
-wire axis_write_memory_tready;
-wire [511:0] axis_write_memory_tdata;
+// Position memory to kernel converter
+wire axis_position_read_memory_tvalid;
+wire axis_position_read_memory_tready;
+wire [511:0] axis_position_read_memory_tdata;
+wire axis_position_read_kernel_tvalid;
+wire axis_position_read_kernel_tready;
+wire [127:0] axis_position_read_kernel_tdata;
 
-kernel_to_memory_converter kernel_to_memory (
+position_memory_to_kernel_converter position_memory_to_kernel (
   .aclk(ap_clk),
   .aresetn(ap_rst_n),
-  .s_axis_tvalid(axis_write_kernel_tvalid),
-  .s_axis_tready(axis_write_kernel_tready),
-  .s_axis_tdata(axis_write_kernel_tdata),
-  .m_axis_tvalid(axis_write_memory_tvalid),
-  .m_axis_tready(axis_write_memory_tready),
-  .m_axis_tdata(axis_write_memory_tdata),
+  .s_axis_tvalid(axis_position_read_memory_tvalid),
+  .s_axis_tready(axis_position_read_memory_tready),
+  .s_axis_tdata(axis_position_read_memory_tdata),
+  .m_axis_tvalid(axis_position_read_kernel_tvalid),
+  .m_axis_tready(axis_position_read_kernel_tready),
+  .m_axis_tdata(axis_position_read_kernel_tdata)
+);
+
+// Velocity kernel to memory converter 
+wire axis_velocity_write_kernel_tvalid;
+wire axis_velocity_write_kernel_tready;
+wire [95:0] axis_velocity_write_kernel_tdata;
+wire axis_velocity_write_memory_tvalid;
+wire axis_velocity_write_memory_tready;
+wire [511:0] axis_velocity_write_memory_tdata;
+
+velocity_kernel_to_memory_converter velocity_kernel_to_memory (
+  .aclk(ap_clk),
+  .aresetn(ap_rst_n),
+  .s_axis_tvalid(axis_velocity_write_kernel_tvalid),
+  .s_axis_tready(axis_velocity_write_kernel_tready),
+  .s_axis_tdata(axis_velocity_write_kernel_tdata),
+  .m_axis_tvalid(axis_velocity_write_memory_tvalid),
+  .m_axis_tready(axis_velocity_write_memory_tready),
+  .m_axis_tdata(axis_velocity_write_memory_tdata),
   .m_axis_tkeep()
+);
+
+// Position kernel to memory converter 
+wire axis_position_write_kernel_tvalid;
+wire axis_position_write_kernel_tready;
+wire [127:0] axis_position_write_kernel_tdata;
+wire axis_position_write_memory_tvalid;
+wire axis_position_write_memory_tready;
+wire [511:0] axis_position_write_memory_tdata;
+
+position_kernel_to_memory_converter position_kernel_to_memory (
+  .aclk(ap_clk),
+  .aresetn(ap_rst_n),
+  .s_axis_tvalid(axis_position_write_kernel_tvalid),
+  .s_axis_tready(axis_position_write_kernel_tready),
+  .s_axis_tdata(axis_position_write_kernel_tdata),
+  .m_axis_tvalid(axis_position_write_memory_tvalid),
+  .m_axis_tready(axis_position_write_memory_tready),
+  .m_axis_tdata(axis_position_write_memory_tdata)
 );
 
 endmodule
