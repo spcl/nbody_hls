@@ -202,125 +202,108 @@ Time:
       }
     }
 
-  ComputeTiles:
-    for (int _bn = 0; _bn < kNTiles; ++_bn) {
+    PosMass_t s1;
+
+  Flattened:
+    for (int _bn = 0; _bn < kNTiles * ((kNBodies * kPipelineFactor) +
+                                       (kUnrollDepth * kPipelineFactor));
+         ++_bn) {
 
       if (state == State::streaming) {
 
-      ComputeBodies:
-        for (int _j = 0; _j < kNBodies; ++_j) {
-          PosMass_t s1;
+        if (j == 0 && l0 == 0) {
+          next = !next;
+        }
 
-        ComputePipeline:
-          for (int _l = 0; _l < kPipelineFactor; ++_l) {
-            #pragma HLS PIPELINE II=1
-            #pragma HLS LOOP_FLATTEN
-
-            if (j == 0 && l0 == 0) {
-              next = !next;
-            }
-
-            // First loop iteration
-            if (l0 == 0) {
-              s1 = posMassIn.Pop();
-              if (d != kUnrollDepth - 1) {
-                posMassOut.Push(s1);
-              }
-
-              if (j >= (bn + 1) * kUnrollDepth * kPipelineFactor &&
-                  j < (bn + 2) * kUnrollDepth * kPipelineFactor &&
-                  bn != kNBodies / (kUnrollDepth * kPipelineFactor) - 1) {
-                int a = j - (bn + 1) * kUnrollDepth * kPipelineFactor;
-                if (a / kPipelineFactor == kUnrollDepth - d - 1) {
-                  posWeightBuffer[a % kPipelineFactor +
-                                  (next ? kPipelineFactor : 0)] = s1;
-                }
-              }
-            }
-            // End first loop iteration
-
-            // All iterations (actual compute)
-            PosMass_t s0 = posWeightBuffer[l0 + (next ? 0 : kPipelineFactor)];
-            #pragma HLS DEPENDENCE variable=posWeightBuffer inter false
-            // TODO: is this dependence pragma safe? Can we use FIFOs?
-            Vec_t tmpacc = ComputeAcceleration<true>(s0, s1);
-            acc[l0] = acc[l0] + tmpacc;
-            #pragma HLS DEPENDENCE variable=acc inter false
-
-            if (l0 == kPipelineFactor - 1) {
-              l0 = 0;
-              if (j == kNBodies - 1) {
-                j = 0;
-                state = State::draining;
-              } else {
-                ++j;
-              }
-            } else {
-              ++l0;
-            }
-
+        // First loop iteration
+        if (l0 == 0) {
+          s1 = posMassIn.Pop();
+          if (d != kUnrollDepth - 1) {
+            posMassOut.Push(s1);
           }
 
-        } // Loop over bodies
-
-      } // state == State::streaming
-
-      if (state == State::draining) {
-      WriteDepth:
-        for (int _k = 0; _k < kUnrollDepth; ++_k) {
-        WritePipeline:
-          for (int _l1 = 0; _l1 < kPipelineFactor; ++_l1) {
-            #pragma HLS PIPELINE II=1
-            if (k < kUnrollDepth - d - 1) {
-              // Until own index is reached, forward velocities to their
-              // respective processing elements
-              velocityOut.Push(velocityIn.Pop());
-            } else if (k == kUnrollDepth - d - 1) {
-              // Once at our own index, push the final computed acceleration
-              // along with the positions and velocities
-              const Vec_t vel = velocityIn.Pop();
-              const PosMass_t pm =
-                  posWeightBuffer[l1 + (next ? 0 : kPipelineFactor)];
-              posMassOut.Push(pm);
-              velocityOut.Push(vel);
-              accelerationOut.Push(acc[l1]);
-              // Reset accumulation variables
-              acc[l1] = Vec_t(static_cast<Data_t>(0));
-            } else {
-              // For the remaining iterations, just forward the packaged/
-              // positions, velocities and accelerations of previous processing
-              // elements
-              const auto pm = posMassIn.Pop();
-              const auto vel = velocityIn.Pop();
-              posMassOut.Push(pm);
-              velocityOut.Push(vel);
-              if (d != 0) {
-                // HLS cannot figure out that this never happens, so put an
-                // explicit "assertion" here
-                const auto accRead = accelerationIn.Pop();
-                accelerationOut.Push(accRead);
-              }
-            }
-
-            if (l1 == kPipelineFactor - 1) {
-              l1 = 0;
-              if (k == kUnrollDepth - 1) {
-                k = 0;
-                if (bn == kNTiles - 1) {
-                  bn = 0;
-                  state = State::saturating;
-                } else {
-                  ++bn;
-                  state = State::streaming;
-                }
-              } else {
-                ++k;
-              }
-            } else {
-              ++l1;
+          if (j >= (bn + 1) * kUnrollDepth * kPipelineFactor &&
+              j < (bn + 2) * kUnrollDepth * kPipelineFactor &&
+              bn != kNBodies / (kUnrollDepth * kPipelineFactor) - 1) {
+            int a = j - (bn + 1) * kUnrollDepth * kPipelineFactor;
+            if (a / kPipelineFactor == kUnrollDepth - d - 1) {
+              posWeightBuffer[a % kPipelineFactor +
+                              (next ? kPipelineFactor : 0)] = s1;
             }
           }
-        } // Loop over kUnrollDepth
+        }
+        // End first loop iteration
+
+        // All iterations (actual compute)
+        PosMass_t s0 = posWeightBuffer[l0 + (next ? 0 : kPipelineFactor)];
+        #pragma HLS DEPENDENCE variable=posWeightBuffer inter false
+        // TODO: is this dependence pragma safe? Can we use FIFOs?
+        Vec_t tmpacc = ComputeAcceleration<true>(s0, s1);
+        acc[l0] = acc[l0] + tmpacc;
+        #pragma HLS DEPENDENCE variable=acc inter false
+
+        if (l0 == kPipelineFactor - 1) {
+          l0 = 0;
+          if (j == kNBodies - 1) {
+            j = 0;
+            state = State::draining;
+          } else {
+            ++j;
+          }
+        } else {
+          ++l0;
+        }
+
+      } else { 
+
+        if (k < kUnrollDepth - d - 1) {
+          // Until own index is reached, forward velocities to their
+          // respective processing elements
+          velocityOut.Push(velocityIn.Pop());
+        } else if (k == kUnrollDepth - d - 1) {
+          // Once at our own index, push the final computed acceleration
+          // along with the positions and velocities
+          const Vec_t vel = velocityIn.Pop();
+          const PosMass_t pm =
+              posWeightBuffer[l1 + (next ? 0 : kPipelineFactor)];
+          posMassOut.Push(pm);
+          velocityOut.Push(vel);
+          accelerationOut.Push(acc[l1]);
+          // Reset accumulation variables
+          acc[l1] = Vec_t(static_cast<Data_t>(0));
+        } else {
+          // For the remaining iterations, just forward the packaged/
+          // positions, velocities and accelerations of previous processing
+          // elements
+          const auto pm = posMassIn.Pop();
+          const auto vel = velocityIn.Pop();
+          posMassOut.Push(pm);
+          velocityOut.Push(vel);
+          if (d != 0) {
+            // HLS cannot figure out that this never happens, so put an
+            // explicit "assertion" here
+            const auto accRead = accelerationIn.Pop();
+            accelerationOut.Push(accRead);
+          }
+        }
+
+        if (l1 == kPipelineFactor - 1) {
+          l1 = 0;
+          if (k == kUnrollDepth - 1) {
+            k = 0;
+            if (bn == kNTiles - 1) {
+              bn = 0;
+              state = State::saturating;
+            } else {
+              ++bn;
+              state = State::streaming;
+            }
+          } else {
+            ++k;
+          }
+        } else {
+          ++l1;
+        }
 
       } // State == state::draining
 
