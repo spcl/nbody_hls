@@ -194,25 +194,30 @@ int main(int argc, char **argv) {
   RunSoftwareEmulation(positionRef, velocityRef);
 
   std::cout << "Verifying results..." << std::endl;
-  constexpr int kPrintBodies = 0;
+  constexpr int kPrintBodies = 20;
   double totalDiff = 0;
+  unsigned mismatches = 0;
   for (int i = 0; i < kNBodies; ++i) {
     if (i < kPrintBodies) {
       std::cout << positionHardware[i] << " / " << positionRef[i] << ", "
                 << velocityHardware[i] << " / " << velocityRef[i] << "\n";
     }
+    bool mismatch = false;
     for (int d = 0; d < kDims; ++d) {
       const auto diff =
           std::abs(positionHardware[i][d] - positionRef[i][d]);
       totalDiff += diff;
-      // if (diff >= 1e-4) {
+      if (diff >= 1e-4) {
+        mismatch = true;
       //   std::cerr << "Mismatch in hardware implementation at index " << i
       //             << ": " << positionHardware[i] << " (should be "
       //             << positionRef[i] << ")." << std::endl;
       //   return 1;
-      // }
+      }
     }
+    mismatches += mismatch;
   }
+  std::cout << "Mismatches: " << mismatches << " / " << kNBodies << "\n";
   std::cout << "Total difference: " << totalDiff << std::endl;
   if (totalDiff >= kNBodies * 1e-4) {
     std::cerr << "Verification failed.";
