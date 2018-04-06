@@ -91,7 +91,7 @@ int main() {
   std::cout << " Done.\n";
 
   std::cout << "Running emulation of hardware implementation..." << std::flush;
-  NBody(reinterpret_cast<MemoryPack_t const *>(&positionHardware[0]),
+  NBody(kSteps, reinterpret_cast<MemoryPack_t const *>(&positionHardware[0]),
         reinterpret_cast<MemoryPack_t *>(&positionHardware[0]),
         &velocityHardware[0], &velocityHardware[0], velocityReadMemory,
         velocityReadKernel, positionMassReadMemory, positionMassReadKernel,

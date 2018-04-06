@@ -41,8 +41,9 @@ extern "C" {
 // void NBody(MemoryPack_t const positionMassIn[], MemoryPack_t positionMassOut[],
 //            Vec_t const velocityIn[], Vec_t velocityOut[]);
 
-void NBody(MemoryPack_t const positionMassIn[], MemoryPack_t positionMassOut[],
-           MemoryPack_t const velocityIn[], MemoryPack_t velocityOut[],
+void NBody(unsigned timesteps, MemoryPack_t const positionMassIn[],
+           MemoryPack_t positionMassOut[], MemoryPack_t const velocityIn[],
+           MemoryPack_t velocityOut[],
            hlslib::Stream<MemoryPack_t> &velocityReadMemory,
            hlslib::Stream<Vec_t> &velocityReadKernel,
            hlslib::Stream<MemoryPack_t> &positionMassReadMemory,

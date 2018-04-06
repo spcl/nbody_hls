@@ -52,7 +52,7 @@ std::vector<PosMass_t> UnpackPosition(
 }
 
 void RunSoftwareEmulation(std::vector<PosMass_t> &position,
-                          std::vector<Vec_t> &velocity) {
+                          std::vector<Vec_t> &velocity, unsigned timesteps) {
 
   auto positionMem = PackPosition(position);
   auto velocityMem = PackVelocity(velocity);
@@ -68,10 +68,10 @@ void RunSoftwareEmulation(std::vector<PosMass_t> &position,
   hlslib::Stream<PosMass_t> positionMassWriteKernel("positionMassWriteKernel");
 
   std::cout << "Running emulation of hardware implementation..." << std::flush;
-  NBody(&positionMem[0], &positionMem[0], &velocityMem[0], &velocityMem[0],
-        velocityReadMemory, velocityReadKernel, positionMassReadMemory,
-        positionMassReadKernel, velocityWriteKernel, velocityWriteMemory,
-        positionMassWriteKernel, positionMassWriteMemory);
+  NBody(timesteps, &positionMem[0], &positionMem[0], &velocityMem[0],
+        &velocityMem[0], velocityReadMemory, velocityReadKernel,
+        positionMassReadMemory, positionMassReadKernel, velocityWriteKernel,
+        velocityWriteMemory, positionMassWriteKernel, positionMassWriteMemory);
   std::cout << " Done.\n";
 
   position = UnpackPosition(positionMem);
@@ -79,6 +79,13 @@ void RunSoftwareEmulation(std::vector<PosMass_t> &position,
 }
 
 int main(int argc, char **argv) {
+
+  if (argc > 2) {
+    std::cerr << "Usage: ./RunNBody.exe [<number of timesteps>]" << std::endl;
+    return 1;
+  }
+
+  const int timesteps = (argc == 2) ? std::stoi(argv[1]) : kSteps;
 
   std::vector<Vec_t> velocity(kNBodies);
   std::vector<PosMass_t> position(2 * kNBodies); // Double buffering
@@ -153,9 +160,9 @@ int main(int argc, char **argv) {
     std::cout << " Done.\n";
 
     std::cout << "Programming device..." << std::flush;
-    auto kernel =
-        context.MakeKernel("NBody.xclbin", "nbody_kernel", positionDevice,
-                           positionDevice, velocityDevice, velocityDevice);
+    auto kernel = context.MakeKernel("NBody.xclbin", "nbody_kernel", timesteps,
+                                     positionDevice, positionDevice,
+                                     velocityDevice, velocityDevice);
     std::cout << " Done.\n";
 
     std::cout << "Executing kernel..." << std::flush;
@@ -191,7 +198,7 @@ int main(int argc, char **argv) {
   std::vector<PosMass_t> positionRef(position);
   std::vector<Vec_t> velocityRef(velocity);
 
-  RunSoftwareEmulation(positionRef, velocityRef);
+  RunSoftwareEmulation(positionRef, velocityRef, timesteps);
 
   std::cout << "Verifying results..." << std::endl;
   constexpr int kPrintBodies = 20;

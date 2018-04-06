@@ -7,29 +7,32 @@
 #include "NBody.h"
 #include "hlslib/Stream.h"
 
-
 void ReadMemory_PositionMass(MemoryPack_t const memory[],
-                             hlslib::Stream<MemoryPack_t> &pipe);
+                             hlslib::Stream<MemoryPack_t> &pipe,
+                             unsigned timesteps);
 
 void WriteMemory_PositionMass(hlslib::Stream<MemoryPack_t> &pipe,
-                              MemoryPack_t memory[]);
+                              MemoryPack_t memory[], unsigned timesteps);
 
 void RepeatFirstTile(hlslib::Stream<PosMass_t> &streamIn,
-                     hlslib::Stream<PosMass_t> &streamOut);
+                     hlslib::Stream<PosMass_t> &streamOut, unsigned timesteps);
 
 void ReadMemory_Velocity(MemoryPack_t const memory[],
-                         hlslib::Stream<MemoryPack_t> &pipe);
+                         hlslib::Stream<MemoryPack_t> &pipe,
+                         unsigned timesteps);
 
 void WriteMemory_Velocity(hlslib::Stream<MemoryPack_t> &pipe,
-                          MemoryPack_t memory[]);
+                          MemoryPack_t memory[], unsigned timesteps);
 
 #ifndef HLSLIB_SYNTHESIS
 
 void ContractWidth_PositionMass(hlslib::Stream<MemoryPack_t> &wide,
-                                hlslib::Stream<PosMass_t> &narrow);
+                                hlslib::Stream<PosMass_t> &narrow,
+                                unsigned timesteps);
 
 void ExpandWidth_PositionMass(hlslib::Stream<PosMass_t> &narrow,
-                              hlslib::Stream<MemoryPack_t> &wide);
+                              hlslib::Stream<MemoryPack_t> &wide,
+                              unsigned timesteps);
 
 /// Takes a stream of wide memory accesses and converts it into elements of a
 /// size that do not divide into the memory width. When crossing a memory

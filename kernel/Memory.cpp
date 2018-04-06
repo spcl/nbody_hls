@@ -26,9 +26,10 @@
 //       store(i)
 
 void ReadMemory_PositionMass(MemoryPack_t const memory[],
-                             hlslib::Stream<MemoryPack_t> &pipe) {
+                             hlslib::Stream<MemoryPack_t> &pipe,
+                             unsigned timesteps) {
 Time:
-  for (int t = 0; t < kSteps; ++t) {
+  for (unsigned t = 0; t < timesteps; ++t) {
   Tiles:
     for (int bn = 0; bn < kNTiles; ++bn) {
     Domain:
@@ -43,9 +44,9 @@ Time:
 }
 
 void WriteMemory_PositionMass(hlslib::Stream<MemoryPack_t> &pipe,
-                              MemoryPack_t memory[]) {
+                              MemoryPack_t memory[], unsigned timesteps) {
 Time:
-  for (int t = 0; t < kSteps; ++t) {
+  for (unsigned t = 0; t < timesteps; ++t) {
   Domain:
     for (int i = 0; i < kMemorySizePosition; ++i) {
       #pragma HLS LOOP_FLATTEN
@@ -57,10 +58,10 @@ Time:
 }
 
 void RepeatFirstTile(hlslib::Stream<PosMass_t> &streamIn,
-                     hlslib::Stream<PosMass_t> &streamOut) {
+                     hlslib::Stream<PosMass_t> &streamOut, unsigned timesteps) {
   hlslib::Stream<PosMass_t> buffer(kUnrollDepth * kPipelineFactor);
 Time:
-  for (int t = 0; t < kSteps; ++t) {
+  for (unsigned t = 0; t < timesteps; ++t) {
   TilesMemoryFlattened:
     for (int i = 0; i < kNTiles * kNBodies + (kUnrollDepth * kPipelineFactor);
          ++i) {
@@ -82,9 +83,10 @@ Time:
 }
 
 void ReadMemory_Velocity(MemoryPack_t const memory[],
-                         hlslib::Stream<MemoryPack_t> &pipe) {
+                         hlslib::Stream<MemoryPack_t> &pipe,
+                         unsigned timesteps) {
 Time:
-  for (int t = 0; t < kSteps; ++t) {
+  for (int t = 0; t < timesteps; ++t) {
   Domain:
     for (int i = 0; i < kMemorySizeVelocity; ++i) {
       #pragma HLS LOOP_FLATTEN
@@ -95,9 +97,9 @@ Time:
 }
 
 void WriteMemory_Velocity(hlslib::Stream<MemoryPack_t> &pipe,
-                          MemoryPack_t memory[]) {
+                          MemoryPack_t memory[], unsigned timesteps) {
 Time:
-  for (int t = 0; t < kSteps; ++t) {
+  for (unsigned t = 0; t < timesteps; ++t) {
   Domain:
     for (int i = 0; i < kMemorySizeVelocity; ++i) {
       #pragma HLS LOOP_FLATTEN
@@ -110,9 +112,10 @@ Time:
 #ifndef HLSLIB_SYNTHESIS
 
 void ContractWidth_PositionMass(hlslib::Stream<MemoryPack_t> &wide,
-                                hlslib::Stream<PosMass_t> &narrow) {
+                                hlslib::Stream<PosMass_t> &narrow,
+                                unsigned timesteps) {
 Time:
-  for (int t = 0; t < kSteps; ++t) {
+  for (unsigned t = 0; t < timesteps; ++t) {
   Tiles:
     for (int bn = 0; bn < kNTiles; ++bn) {
     Memory:
@@ -139,9 +142,10 @@ Time:
 }
 
 void ExpandWidth_PositionMass(hlslib::Stream<PosMass_t> &narrow,
-                              hlslib::Stream<MemoryPack_t> &wide) {
+                              hlslib::Stream<MemoryPack_t> &wide,
+                              unsigned timesteps) {
 Time:
-  for (int t = 0; t < kSteps; ++t) {
+  for (unsigned t = 0; t < timesteps; ++t) {
   Memory:
     for (int i = 0; i < kMemorySizePosition; ++i) {
       hlslib::DataPack<PosMass_t, kVectorsPerMemory> mem;
