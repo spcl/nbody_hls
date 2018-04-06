@@ -297,7 +297,7 @@ void ComputeStage(hlslib::Stream<PosMass_t> &posMassIn,
                   hlslib::Stream<Vec_t> &velocityOut,
                   hlslib::Stream<Vec_t> &accelerationIn,
                   hlslib::Stream<Vec_t> &accelerationOut,
-                  int d) {
+                  int d, unsigned timesteps) {
 
   ap_uint<hlslib::ConstLog2(kUnrollDepth * kPipelineFactor)> s = 0;
   ap_uint<hlslib::ConstLog2(kNBodies)> j = 0;
@@ -307,27 +307,25 @@ void ComputeStage(hlslib::Stream<PosMass_t> &posMassIn,
   ap_uint<hlslib::ConstLog2(kNTiles)> bn = 0;
 
   bool next = false;
-
-  enum class State {
-    saturating,
-    streaming,
-    draining
-  };
-  State state = State::saturating;
+  bool saturate = true;
+  bool drain = false;
 
 Time:
-  for (int t = 0; t < timesteps; ++t) {
+  for (unsigned t = 0; t < timesteps; ++t) {
     PosMass_t posWeightBuffer[2 * kPipelineFactor];
     Vec_t acc[kPipelineFactor];
 
     PosMass_t s1;
 
+    const unsigned flattened = (kUnrollDepth - d) * kPipelineFactor +
+                               kNTiles * ((kNBodies * kPipelineFactor) +
+                                          (kUnrollDepth * kPipelineFactor));
+
   Flattened:
-    for (int _i = 0; _i < (kUnrollDepth - d) * kPipelineFactor +
-                              kNTiles * ((kNBodies * kPipelineFactor) +
-                                         (kUnrollDepth * kPipelineFactor));
-         ++_i) {
-      if (state == State::saturating) {
+    for (int _i = 0; _i < flattened; ++_i) {
+      #pragma HLS PIPELINE II=1
+      #pragma HLS LOOP_FLATTEN
+      if (saturate) {
         // --------------------------------------------------------------------
 
         PosMass_t pm = posMassIn.Pop();
@@ -341,13 +339,13 @@ Time:
 
         if (s == (kUnrollDepth - d) * kPipelineFactor - 1) {
           s = 0;
-          state = State::streaming;
+          saturate = false;
         } else {
           ++s;
         }
 
         // --------------------------------------------------------------------
-      } else if (state == State::streaming) {
+      } else if (!drain) {
         // --------------------------------------------------------------------
 
         if (j == 0 && l0 == 0) {
@@ -386,7 +384,7 @@ Time:
           l0 = 0;
           if (j == kNBodies - 1) {
             j = 0;
-            state = State::draining;
+            drain = true;
           } else {
             ++j;
           }
@@ -433,12 +431,12 @@ Time:
           l1 = 0;
           if (k == kUnrollDepth - 1) {
             k = 0;
+            drain = false;
             if (bn == kNTiles - 1) {
               bn = 0;
-              state = State::saturating;
+              saturate = true;
             } else {
               ++bn;
-              state = State::streaming;
             }
           } else {
             ++k;
