@@ -17,11 +17,11 @@ generate_target {instantiation_template} [get_files $prjPath.srcs/sources_1/ip/p
 # 96-bit to 512-bit memory width converter
 create_ip -name axis_dwidth_converter -vendor xilinx.com -library ip -module_name velocity_kernel_to_memory_converter
 set_property -dict [list CONFIG.S_TDATA_NUM_BYTES {12} CONFIG.M_TDATA_NUM_BYTES {64}] [get_ips velocity_kernel_to_memory_converter]
-generate_target {instantiation_template} [get_files /home/definelj/dev/nbody_hls/build/nbody_ex/nbody_ex.srcs/sources_1/ip/velocity_kernel_to_memory_converter/velocity_kernel_to_memory_converter.xci]
+generate_target {instantiation_template} [get_files $prjPath.srcs/sources_1/ip/velocity_kernel_to_memory_converter/velocity_kernel_to_memory_converter.xci]
 
 # 96-bit to 516-bit memory width converter
 create_ip -name axis_dwidth_converter -vendor xilinx.com -library ip -module_name position_kernel_to_memory_converter
 set_property -dict [list CONFIG.S_TDATA_NUM_BYTES {16} CONFIG.M_TDATA_NUM_BYTES {64}] [get_ips position_kernel_to_memory_converter]
-generate_target {instantiation_template} [get_files /home/definelj/dev/nbody_hls/build/nbody_ex/nbody_ex.srcs/sources_1/ip/position_kernel_to_memory_converter/position_kernel_to_memory_converter.xci]
+generate_target {instantiation_template} [get_files $prjPath.srcs/sources_1/ip/position_kernel_to_memory_converter/position_kernel_to_memory_converter.xci]
 
 close_project
