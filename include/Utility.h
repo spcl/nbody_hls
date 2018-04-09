@@ -73,8 +73,9 @@ inline void ComputeGravitation(PosMass_t position[], Vec_t force[]) {
   }
 }
 
-inline void ReferenceLikeCUDA(PosMass_t position[], Vec_t velocity[]) {
-  for (int j = 0; j < kSteps; j++) {
+inline void ReferenceLikeCUDA(PosMass_t position[], Vec_t velocity[],
+                              unsigned timesteps) {
+  for (int j = 0; j < timesteps; j++) {
     Vec_t force[kNBodies];
     ComputeGravitation(position, force);
 

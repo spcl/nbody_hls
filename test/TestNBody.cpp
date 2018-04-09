@@ -6,9 +6,17 @@
 #include "NBody.h"
 #include "Utility.h"
 
-void NewAlgorithmReference(PosMass_t positionMass[], Vec_t velocity[]);
+void NewAlgorithmReference(PosMass_t positionMass[], Vec_t velocity[],
+                           unsigned timesteps);
 
-int main() {
+int main(int argc, char const **argv) {
+
+  if (argc > 2) {
+    std::cerr << "Usage: ./RunNBody.exe [<number of timesteps>]" << std::endl;
+    return 1;
+  }
+
+  const int timesteps = (argc == 2) ? std::stoi(argv[1]) : kSteps;
   std::vector<Vec_t> velocity(kNBodies);
   std::vector<PosMass_t> position(2 * kNBodies);  // Double buffering
 
@@ -83,15 +91,15 @@ int main() {
 
   std::cout << "Running reference implementation of new algorithm..."
             << std::flush;
-  NewAlgorithmReference(position.data(), velocity.data());
+  NewAlgorithmReference(position.data(), velocity.data(), timesteps);
   std::cout << " Done.\n";
 
   std::cout << "Running CUDA reference implementation..." << std::flush;
-  ReferenceLikeCUDA(positionRef.data(), velocityRef.data());
+  ReferenceLikeCUDA(positionRef.data(), velocityRef.data(), timesteps);
   std::cout << " Done.\n";
 
   std::cout << "Running emulation of hardware implementation..." << std::flush;
-  NBody(kSteps, reinterpret_cast<MemoryPack_t const *>(&positionHardware[0]),
+  NBody(timesteps, reinterpret_cast<MemoryPack_t const *>(&positionHardware[0]),
         reinterpret_cast<MemoryPack_t *>(&positionHardware[0]),
         &velocityHardware[0], &velocityHardware[0], velocityReadMemory,
         velocityReadKernel, positionMassReadMemory, positionMassReadKernel,
@@ -133,8 +141,9 @@ int main() {
 }
 
 // Reference implementation for new hardware design
-void NewAlgorithmReference(PosMass_t positionMass[], Vec_t velocity[]) {
-  for (int t = 0; t < kSteps; t++) {
+void NewAlgorithmReference(PosMass_t positionMass[], Vec_t velocity[],
+                           unsigned timesteps) {
+  for (int t = 0; t < timesteps; t++) {
     PosMass_t positionMassNew[kNBodies];
     Vec_t velocityNew[kNBodies];
     // is a datapack initialised to zero by default?
