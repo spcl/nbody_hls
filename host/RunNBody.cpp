@@ -43,7 +43,7 @@ std::vector<PosMass_t> UnpackPosition(
     std::vector<MemoryPack_t> const &positionMem) {
   std::cout << "Unpacking position vector..." << std::flush;
   std::vector<PosMass_t> position((kDims + 1) * kNBodies);
-  for (int i = 0; i < (kDims + 1) * kNBodies; ++i) {
+  for (int i = 0; i < 2 * (kDims + 1) * kNBodies; ++i) {
     position[i / (kDims + 1)][i % (kDims + 1)] =
         positionMem[i / kMemoryWidth][i % kMemoryWidth];
   }
@@ -86,6 +86,7 @@ int main(int argc, char **argv) {
   }
 
   const int timesteps = (argc == 2) ? std::stoi(argv[1]) : kSteps;
+  std::cout << "Running for " << timesteps << " timesteps.\n";
 
   std::vector<Vec_t> velocity(kNBodies);
   std::vector<PosMass_t> position(2 * kNBodies); // Double buffering
@@ -209,8 +210,8 @@ int main(int argc, char **argv) {
     if (i < kPrintBodies) {
       std::cout << positionHardware[offset + i] << " / "
                 << positionRef[offset + i] << ", "
-                << velocityHardware[offset + i] << " / "
-                << velocityRef[offset + i] << "\n";
+                << velocityHardware[i] << " / "
+                << velocityRef[i] << "\n";
     }
     bool mismatch = false;
     for (int d = 0; d < kDims; ++d) {
