@@ -207,13 +207,15 @@ int main(int argc, char **argv) {
   const unsigned offset = (timesteps % 2 == 0) ? 0 : kNBodies;
   for (int i = 0; i < kNBodies; ++i) {
     if (i < kPrintBodies) {
-      std::cout << positionHardware[offset + i] << " / " << positionRef[i] << ", "
-                << velocityHardware[offset + i] << " / " << velocityRef[i] << "\n";
+      std::cout << positionHardware[offset + i] << " / "
+                << positionRef[offset + i] << ", "
+                << velocityHardware[offset + i] << " / "
+                << velocityRef[offset + i] << "\n";
     }
     bool mismatch = false;
     for (int d = 0; d < kDims; ++d) {
-      const auto diff =
-          std::abs(positionHardware[offset + i][d] - positionRef[i][d]);
+      const auto diff = std::abs(positionHardware[offset + i][d] -
+                                 positionRef[offset + i][d]);
       totalDiff += diff;
       if (diff >= 1e-4) {
         mismatch = true;
