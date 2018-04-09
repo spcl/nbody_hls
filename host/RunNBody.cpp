@@ -204,15 +204,16 @@ int main(int argc, char **argv) {
   constexpr int kPrintBodies = 20;
   double totalDiff = 0;
   unsigned mismatches = 0;
+  const unsigned offset = (timesteps % 2 == 0) ? 0 : kNBodies;
   for (int i = 0; i < kNBodies; ++i) {
     if (i < kPrintBodies) {
-      std::cout << positionHardware[i] << " / " << positionRef[i] << ", "
-                << velocityHardware[i] << " / " << velocityRef[i] << "\n";
+      std::cout << positionHardware[offset + i] << " / " << positionRef[i] << ", "
+                << velocityHardware[offset + i] << " / " << velocityRef[i] << "\n";
     }
     bool mismatch = false;
     for (int d = 0; d < kDims; ++d) {
       const auto diff =
-          std::abs(positionHardware[i][d] - positionRef[i][d]);
+          std::abs(positionHardware[offset + i][d] - positionRef[i][d]);
       totalDiff += diff;
       if (diff >= 1e-4) {
         mismatch = true;

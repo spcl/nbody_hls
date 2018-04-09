@@ -109,6 +109,7 @@ int main(int argc, char const **argv) {
 
   std::cout << "Verifying results..." << std::flush;
   constexpr int kPrintBodies = 0;
+  const unsigned offset = (timesteps % 2 == 0) ? 0 : kNBodies;
   for (int i = 0; i < kNBodies; ++i) {
     if (i < kPrintBodies) {
       std::cout << position[i] << " / " << positionRef[i] << ", " << velocity[i]
@@ -125,10 +126,11 @@ int main(int argc, char const **argv) {
         }
       }
       {
-        const auto diff = std::abs(position[i][d] - positionHardware[i][d]);
+        const auto diff =
+            std::abs(position[i][d] - positionHardware[i + offset][d]);
         if (diff >= 1e-4) {
           std::cerr << "Mismatch in hardware implementation at index " << i
-                    << ": " << positionHardware[i] << " (should be "
+                    << ": " << positionHardware[i + offset] << " (should be "
                     << position[i] << ")." << std::endl;
           return 1;
         }
