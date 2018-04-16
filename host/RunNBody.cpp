@@ -1,9 +1,15 @@
 /// @author    Johannes de Fine Licht (johannes.definelicht@inf.ethz.ch)
-/// @date      January 2018 
-/// @copyright This software is copyrighted under the BSD 3-Clause License. 
+/// @date      January 2018
+/// @copyright This software is copyrighted under the BSD 3-Clause License.
 
 #include "NBody.h"
 #include "hlslib/SDAccel.h"
+
+#include <sys/stat.h>
+#include <unistd.h>
+#include <iostream>
+#include <fstream>
+#include <boost/filesystem.hpp>
 
 std::vector<MemoryPack_t> PackVelocity(std::vector<Vec_t> const &velocity) {
   std::cout << "Packing velocity vector..." << std::flush;
@@ -161,7 +167,7 @@ int main(int argc, char **argv) {
     std::cout << " Done.\n";
 
     std::cout << "Programming device..." << std::flush;
-    auto program = context.MakeProgram("NBody.xclbin");
+    auto program = context.MakeProgram("/tmp/NBody.xclbin");
     auto kernel =
         program.MakeKernel("nbody_kernel", timesteps, positionDevice,
                            positionDevice, velocityDevice, velocityDevice);
@@ -200,7 +206,50 @@ int main(int argc, char **argv) {
   std::vector<PosMass_t> positionRef(position);
   std::vector<Vec_t> velocityRef(velocity);
 
-  RunSoftwareEmulation(positionRef, velocityRef, timesteps);
+  std::stringstream filenamestr;
+  filenamestr << "../tmp/n" << kNBodies << "_t" << timesteps << ".txt";
+  std::string filename = filenamestr.str();
+  boost::filesystem::create_directories("../tmp");
+  if (FILE *file = fopen(filename.c_str(), "r")) {
+    fclose(file);
+    std::ifstream infile(filename.c_str());
+    std::cout << "Reading from file ... \n";
+    std::string line;
+    for(int i = 0; i < kNBodies; i++){
+      for(int j = 0; j <= kDims; j ++){
+        std::getline(infile, line);
+        positionRef[i][j] = ::atof(line.c_str());
+      }
+    }
+    for(int i = 0; i < kNBodies; i++){
+      for(int j = 0; j < kDims; j ++){
+        std::getline(infile, line);
+        velocityRef[i][j] = ::atof(line.c_str());
+      }
+    }
+  } else {
+    std::cout << "File not found, Computing ... \n";
+
+    RunSoftwareEmulation(positionRef, velocityRef, timesteps);
+    std::cout << " Done.\n";
+
+    std::ofstream outputFile;
+    outputFile.precision(20);
+    outputFile.open(filename);
+    for(int i = 0; i < kNBodies; i++){
+      for(int j = 0; j <= kDims; j ++){
+        outputFile << positionRef[i][j] << std::endl;
+      }
+    }
+    for(int i = 0; i < kNBodies; i++){
+      for(int j = 0; j < kDims; j ++){
+        outputFile << velocityRef[i][j] << std::endl;
+      }
+    }
+    outputFile.close();
+
+    std::cout << "Done writing. \n";
+  }
 
   std::cout << "Verifying results..." << std::endl;
   constexpr int kPrintBodies = 20;
@@ -208,12 +257,12 @@ int main(int argc, char **argv) {
   unsigned mismatches = 0;
   const unsigned offset = (timesteps % 2 == 0) ? 0 : kNBodies;
   for (int i = 0; i < kNBodies; ++i) {
-    if (i < kPrintBodies) {
-      std::cout << positionHardware[offset + i] << " / "
-                << positionRef[offset + i] << ", "
-                << velocityHardware[i] << " / "
-                << velocityRef[i] << "\n";
-    }
+   if (i < kPrintBodies) {
+     std::cout << positionHardware[offset + i] << " / "
+               << positionRef[offset + i] << ", "
+               << velocityHardware[i] << " / "
+               << velocityRef[i] << "\n";
+   }
     bool mismatch = false;
     for (int d = 0; d < kDims; ++d) {
       const auto diff = std::abs(positionHardware[offset + i][d] -
@@ -221,12 +270,18 @@ int main(int argc, char **argv) {
       totalDiff += diff;
       if (diff >= 1e-4) {
         mismatch = true;
-      //   std::cerr << "Mismatch in hardware implementation at index " << i
-      //             << ": " << positionHardware[i] << " (should be "
-      //             << positionRef[i] << ")." << std::endl;
-      //   return 1;
+        // std::cerr << "Mismatch in hardware implementation at index " << i
+        //           << ": " << positionHardware[i] << " (should be "
+        //           << positionRef[i] << ")." << std::endl;
+        // return 1;
       }
     }
+      // if(mismatch){
+      // std::cout << i << " / " << positionHardware[offset + i] << " / "
+      // << positionRef[offset + i] << ", "
+      // << velocityHardware[i] << " / "
+      // << velocityRef[i] << "\n";
+      // }
     mismatches += mismatch;
   }
   std::cout << "Mismatches: " << mismatches << " / " << kNBodies << "\n";
