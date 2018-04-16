@@ -84,29 +84,27 @@ add_custom_target(package_kernel COMMAND ${CMAKE_SOURCE_DIR}/scripts/project_man
 set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES
              ${DONUT_KERNEL_DIRECTORY}/${DONUT_KERNEL_NAME}_ex)
 
-if(SDAccel_FOUND)
-  set(NBODY_XOCC_COMMAND
-    -t hw
-    -l
-    -O3
-    -s
-    -o NBody.xclbin
-    -I${CMAKE_SOURCE_DIR}/include
-    -I${CMAKE_SOURCE_DIR}/hlslib/include
-    -I${CMAKE_BINARY_DIR}
-    ${DONUT_KERNEL_NAME}.xo 
-    --kernel NBody
-    --platform ${NBODY_DSA_NAME}
-    --xp prop:kernel.${NBODY_ENTRY_FUNCTION}.kernel_flags="${CMAKE_CXX_FLAGS} -DNBODY_SYNTHESIS -DHLSLIB_SYNTHESIS"
-    --xp misc:map_connect=add.kernel.${DONUT_KERNEL_NAME}_1.m00_axi.core.OCL_REGION_0.M00_AXI
-    --xp misc:map_connect=add.kernel.${DONUT_KERNEL_NAME}_1.m01_axi.core.OCL_REGION_0.M01_AXI
-    --max_memory_ports all)
-  if(NBODY_TARGET_CLOCK GREATER 0)
-    set(NBODY_XOCC_COMMAND ${NBODY_XOCC_COMMAND}
-        --kernel_frequency ${NBODY_TARGET_CLOCK})
-  endif()
-  add_custom_target(build_kernel
-    COMMAND XILINX_PATH=${CMAKE_BINARY_DIR} ${SDAccel_XOCC} ${NBODY_XOCC_COMMAND})
-  add_executable(RunNBody.exe host/RunNBody.cpp)
-  target_link_libraries(RunNBody.exe ${SDAccel_LIBRARIES} nbodykernel)
+set(NBODY_XOCC_COMMAND
+  -t hw
+  -l
+  -O3
+  -s
+  -o NBody.xclbin
+  -I${CMAKE_SOURCE_DIR}/include
+  -I${CMAKE_SOURCE_DIR}/hlslib/include
+  -I${CMAKE_BINARY_DIR}
+  ${DONUT_KERNEL_NAME}.xo 
+  --kernel NBody
+  --platform ${NBODY_DSA_NAME}
+  --xp prop:kernel.${NBODY_ENTRY_FUNCTION}.kernel_flags="${CMAKE_CXX_FLAGS} -DNBODY_SYNTHESIS -DHLSLIB_SYNTHESIS"
+  --xp misc:map_connect=add.kernel.${DONUT_KERNEL_NAME}_1.m00_axi.core.OCL_REGION_0.M00_AXI
+  --xp misc:map_connect=add.kernel.${DONUT_KERNEL_NAME}_1.m01_axi.core.OCL_REGION_0.M01_AXI
+  --max_memory_ports all)
+if(NBODY_TARGET_CLOCK GREATER 0)
+  set(NBODY_XOCC_COMMAND ${NBODY_XOCC_COMMAND}
+      --kernel_frequency ${NBODY_TARGET_CLOCK})
 endif()
+add_custom_target(build_kernel
+  COMMAND XILINX_PATH=${CMAKE_BINARY_DIR} ${SDAccel_XOCC} ${NBODY_XOCC_COMMAND})
+add_executable(RunNBody.exe host/RunNBody.cpp)
+target_link_libraries(RunNBody.exe ${SDAccel_LIBRARIES} nbodykernel)

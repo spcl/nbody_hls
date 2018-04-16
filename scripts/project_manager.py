@@ -4,12 +4,30 @@ import os
 import shutil
 import subprocess as sp
 
+def run(*popenargs, input=None, check=False, **kwargs):
+    if input is not None:
+        if 'stdin' in kwargs:
+            raise ValueError('stdin and input arguments may not both be used.')
+        kwargs['stdin'] = sp.PIPE
+
+    process = sp.Popen(*popenargs, **kwargs)
+    try:
+        stdout, stderr = process.communicate(input)
+    except:
+        process.kill()
+        process.wait()
+        raise
+    retcode = process.poll()
+    if check and retcode:
+        raise sp.CalledProcessError(
+            retcode, process.args, output=stdout, stderr=stderr)
+    return retcode, stdout, stderr
 
 def run_tcl(scriptPath, args):
-    proc = sp.run(
+    proc = run(
         [args["vivadoPath"], "-mode", "batch", "-source", scriptPath],
         cwd=args["tmpDir"])
-    if proc.returncode != 0:
+    if proc[0] != 0:
         raise RuntimeError("Script " + os.path.basename(scriptPath) +
                            " failed.")
 
