@@ -167,7 +167,7 @@ int main(int argc, char **argv) {
     std::cout << " Done.\n";
 
     std::cout << "Programming device..." << std::flush;
-    auto program = context.MakeProgram("/tmp/NBody.xclbin");
+    auto program = context.MakeProgram("NBody.xclbin");
     auto kernel =
         program.MakeKernel("nbody_kernel", timesteps, positionDevice,
                            positionDevice, velocityDevice, velocityDevice);
