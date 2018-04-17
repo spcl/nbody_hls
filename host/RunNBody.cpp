@@ -207,9 +207,9 @@ int main(int argc, char **argv) {
   std::vector<Vec_t> velocityRef(velocity);
 
   std::stringstream filenamestr;
-  filenamestr << "../tmp/n" << kNBodies << "_t" << timesteps << ".txt";
+  filenamestr << "../golden/n" << kNBodies << "_t" << timesteps << ".txt";
   std::string filename = filenamestr.str();
-  boost::filesystem::create_directories("../tmp");
+  boost::filesystem::create_directories("../golden");
   if (FILE *file = fopen(filename.c_str(), "r")) {
     fclose(file);
     std::ifstream infile(filename.c_str());
