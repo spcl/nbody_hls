@@ -95,58 +95,67 @@ int main(int argc, char const **argv) {
                         velocity[i / 3][i % 3];
   }
 
-  std::stringstream filenamestr;
-  filenamestr << "../tmp/n" << kNBodies << "_t" << timesteps << ".txt";
-  std::string filename = filenamestr.str();
-  boost::filesystem::create_directories("../tmp");
-  if (FILE *file = fopen(filename.c_str(), "r")) {
-    fclose(file);
-    std::ifstream infile(filename.c_str());
-    std::cout << "Reading from file ... \n";
-    std::string line;
-    for(int i = 0; i < kNBodies; i++){
-      for(int j = 0; j <= kDims; j ++){
-        std::getline(infile, line);
-        positionRef[i][j] = ::atof(line.c_str());
-        position[i][j] = positionRef[i][j];
-      }
-    }
-    for(int i = 0; i < kNBodies; i++){
-      for(int j = 0; j < kDims; j ++){
-        std::getline(infile, line);
-        velocityRef[i][j] = ::atof(line.c_str());
-        velocity[i][j] = velocityRef[i][j];
-      }
-    }
-  } else {
-    std::cout << "File not found, Computing ... \n";
+  // std::stringstream filenamestr;
+  // filenamestr << "../tmp/n" << kNBodies << "_t" << timesteps << ".txt";
+  // std::string filename = filenamestr.str();
+  // boost::filesystem::create_directories("../tmp");
+  // if (FILE *file = fopen(filename.c_str(), "r")) {
+  //   fclose(file);
+  //   std::ifstream infile(filename.c_str());
+  //   std::cout << "Reading from file ... \n";
+  //   std::string line;
+  //   for(int i = 0; i < kNBodies; i++){
+  //     for(int j = 0; j <= kDims; j ++){
+  //       std::getline(infile, line);
+  //       positionRef[i][j] = ::atof(line.c_str());
+  //       position[i][j] = positionRef[i][j];
+  //     }
+  //   }
+  //   for(int i = 0; i < kNBodies; i++){
+  //     for(int j = 0; j < kDims; j ++){
+  //       std::getline(infile, line);
+  //       velocityRef[i][j] = ::atof(line.c_str());
+  //       velocity[i][j] = velocityRef[i][j];
+  //     }
+  //   }
+  // } else {
+  //   std::cout << "File not found, Computing ... \n";
+  //
+  //   std::cout << "Running CUDA reference implementation..." << std::flush;
+  //   ReferenceLikeCUDA(positionRef.data(), velocityRef.data(), timesteps);
+  //   std::cout << " Done.\n";
+  //
+  //   std::cout << "Running reference implementation of new algorithm..."
+  //             << std::flush;
+  //   NewAlgorithmReference(position.data(), velocity.data(), timesteps);
+  //   std::cout << " Done.\n";
+  //
+  //   std::ofstream outputFile;
+  //   outputFile.precision(20);
+  //   outputFile.open(filename);
+  //   for(int i = 0; i < kNBodies; i++){
+  //     for(int j = 0; j <= kDims; j ++){
+  //       outputFile << positionRef[i][j] << std::endl;
+  //     }
+  //   }
+  //   for(int i = 0; i < kNBodies; i++){
+  //     for(int j = 0; j < kDims; j ++){
+  //       outputFile << velocityRef[i][j] << std::endl;
+  //     }
+  //   }
+  //   outputFile.close();
+  //
+  //   std::cout << "Done writing. \n";
+  // }
 
-    std::cout << "Running CUDA reference implementation..." << std::flush;
-    ReferenceLikeCUDA(positionRef.data(), velocityRef.data(), timesteps);
-    std::cout << " Done.\n";
+  std::cout << "Running CUDA reference implementation..." << std::flush;
+  ReferenceLikeCUDA(positionRef.data(), velocityRef.data(), timesteps);
+  std::cout << " Done.\n";
 
-    std::cout << "Running reference implementation of new algorithm..."
-              << std::flush;
-    NewAlgorithmReference(position.data(), velocity.data(), timesteps);
-    std::cout << " Done.\n";
-
-    std::ofstream outputFile;
-    outputFile.precision(20);
-    outputFile.open(filename);
-    for(int i = 0; i < kNBodies; i++){
-      for(int j = 0; j <= kDims; j ++){
-        outputFile << positionRef[i][j] << std::endl;
-      }
-    }
-    for(int i = 0; i < kNBodies; i++){
-      for(int j = 0; j < kDims; j ++){
-        outputFile << velocityRef[i][j] << std::endl;
-      }
-    }
-    outputFile.close();
-
-    std::cout << "Done writing. \n";
-  }
+  std::cout << "Running reference implementation of new algorithm..."
+            << std::flush;
+  NewAlgorithmReference(position.data(), velocity.data(), timesteps);
+  std::cout << " Done.\n";
 
 
   std::cout << "Running emulation of hardware implementation..." << std::flush;
