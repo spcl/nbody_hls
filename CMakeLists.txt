@@ -11,6 +11,7 @@ set(NBODY_DSA_NAME "xilinx:xil-accel-rd-ku115:4ddr-xpr:4.0" CACHE STRING
 set(NBODY_TARGET_CLOCK 300 CACHE STRING "Target clock for kernel.")
 set(NBODY_TARGET_CLOCK_UNCERTAINTY 1.08 CACHE STRING "Clock uncertainty for HLS.")
 set(NBODY_FLATTEN OFF CACHE STRING "Flatten the loops to save cycles on saturating and draining the pipeline")
+set(MM_SINGLE_SLR OFF CACHE STRING "Only place and route on a single SLR of the KU115")
 
 # Domain options
 set(NBODY_DATA_TYPE "float" CACHE STRING "Matrix data type.")
@@ -100,6 +101,11 @@ set(NBODY_XOCC_COMMAND
   --xp misc:map_connect=add.kernel.${DONUT_KERNEL_NAME}_1.m00_axi.core.OCL_REGION_0.M00_AXI
   --xp misc:map_connect=add.kernel.${DONUT_KERNEL_NAME}_1.m01_axi.core.OCL_REGION_0.M01_AXI
   --max_memory_ports all)
+if(NBODY_SINGLE_SLR)
+  set(NBODY_XOCC_COMMAND ${NBODY_XOCC_COMMAND} -O4)
+else()
+  set(NBODY_XOCC_COMMAND ${NBODY_XOCC_COMMAND} -O3)
+endif()
 if(NBODY_TARGET_CLOCK GREATER 0)
   set(NBODY_XOCC_COMMAND ${NBODY_XOCC_COMMAND}
       --kernel_frequency ${NBODY_TARGET_CLOCK})
