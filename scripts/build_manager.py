@@ -32,7 +32,7 @@ PROJECT_CONFIG = {
         "default": None
     }),
     ("unrollDepth", {
-        "cmake": "MM_UNROLL_DEPTH",
+        "cmake": "NBODY_UNROLL_DEPTH",
         "type": int,
         "default": None
     }),
@@ -52,7 +52,7 @@ PROJECT_CONFIG = {
         "default": 200
     }),
     ("target", {
-        "cmake": "MM_DSA_NAME",
+        "cmake": "NBODY_DSA_NAME",
         "type": str,
         "default": "xilinx:xil-accel-rd-ku115:4ddr-xpr:4.0"
     }),
@@ -117,6 +117,8 @@ class Configuration(object):
         pattern += "([^_]+)_"
       elif opt["type"] == int:
         pattern += "([0-9]+)_"
+      elif opt["type"] == bool:
+        pattern += "(True|False)_"
       else:
         raise TypeError("Unsupported type \"{}\".".format(str(opt["type"])))
     m = re.search(pattern[:-1], s) # Removing trailing underscore
@@ -377,7 +379,7 @@ def get_build_result(buildDir):
     extract_result_build(conf)
     confs.append(conf)
   with open(os.path.join(PROJECT_CONFIG["buildDir"],
-                         "build_status.csv"), "w") as resultFile:
+                         "results.csv"), "w") as resultFile:
     resultFile.write(Consumption.csv_cols() + "\n")
     for conf in confs:
       resultFile.write(str(conf.consumption) + "\n")
