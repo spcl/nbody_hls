@@ -5,11 +5,8 @@
 #include "NBody.h"
 #include "hlslib/SDAccel.h"
 
-#include <sys/stat.h>
-#include <unistd.h>
 #include <iostream>
 #include <fstream>
-#include <boost/filesystem.hpp>
 
 std::vector<MemoryPack_t> PackVelocity(std::vector<Vec_t> const &velocity) {
   std::cout << "Packing velocity vector..." << std::flush;
@@ -208,23 +205,20 @@ int main(int argc, char **argv) {
 
   std::stringstream filenamestr;
   filenamestr << "../golden/n" << kNBodies << "_t" << timesteps << ".txt";
-  std::string filename = filenamestr.str();
-  boost::filesystem::create_directories("../golden");
-  if (FILE *file = fopen(filename.c_str(), "r")) {
-    fclose(file);
-    std::ifstream infile(filename.c_str());
+  auto inFile = std::ifstream(filenamestr.str(), std::ifstream::in);
+  if (inFile.good()) {
     std::cout << "Reading from file ... \n";
     std::string line;
     for(int i = 0; i < kNBodies; i++){
       for(int j = 0; j <= kDims; j ++){
-        std::getline(infile, line);
-        positionRef[i][j] = ::atof(line.c_str());
+        std::getline(inFile, line);
+        positionRef[i][j] = std::atof(line.c_str());
       }
     }
     for(int i = 0; i < kNBodies; i++){
       for(int j = 0; j < kDims; j ++){
-        std::getline(infile, line);
-        velocityRef[i][j] = ::atof(line.c_str());
+        std::getline(inFile, line);
+        velocityRef[i][j] = std::atof(line.c_str());
       }
     }
   } else {
@@ -235,7 +229,7 @@ int main(int argc, char **argv) {
 
     std::ofstream outputFile;
     outputFile.precision(20);
-    outputFile.open(filename);
+    outputFile.open(filenamestr.str());
     for(int i = 0; i < kNBodies; i++){
       for(int j = 0; j <= kDims; j ++){
         outputFile << positionRef[i][j] << std::endl;
@@ -287,7 +281,7 @@ int main(int argc, char **argv) {
   std::cout << "Mismatches: " << mismatches << " / " << kNBodies << "\n";
   std::cout << "Total difference: " << totalDiff << std::endl;
   if (totalDiff >= kNBodies * 1e-4) {
-    std::cerr << "Verification failed.";
+    std::cerr << "Verification failed." << std::endl;
     return 1;
   }
   std::cout << "Done." << std::endl;
