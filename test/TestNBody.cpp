@@ -2,11 +2,12 @@
 /// @date      January 2018
 /// @copyright This software is copyrighted under the BSD 3-Clause License.
 
-#include <iostream>
 // #include <fstream>
 // #include <boost/filesystem.hpp>
 
 #include <cmath>
+#include <iostream>
+#include <random>
 #include "NBody.h"
 #include "Utility.h"
 
