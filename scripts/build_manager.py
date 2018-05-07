@@ -13,66 +13,46 @@ import sys
 import time
 
 PROJECT_CONFIG = {
-  "kernelName": "MatrixMatrix",
-  "kernelFile": "MatrixMatrix",
-  "makeSynthesis": "synthesize_matrix_matrix",
-  "makeKernel": "kernel_matrix_matrix",
-  "executeKernel": ["./RunMatrixMatrix"],
+  "kernelName": "nbody_kernel",
+  "kernelFile": "NBody",
+  "makeSynthesis": "synthesize_nbody",
+  "makeKernel": "build_kernel",
+  "executeKernel": ["./RunNBody.exe"],
   "buildDir": "scan",
   "benchmarkDir": "benchmark",
   "options": OrderedDict([
     ("dataType", {
-        "cmake": "MM_DATA_TYPE",
+        "cmake": "NBODY_DATA_TYPE",
         "type": str,
         "default": None
     }),
-    ("mapOp", {
-        "cmake": "MM_MAP_OP",
-        "type": str,
-        "default": None
-    }),
-    ("reduceOp", {
-        "cmake": "MM_REDUCE_OP",
-        "type": str,
-        "default": None
-    }),
-    ("kernelWidth", {
-        "cmake": "MM_KERNEL_WIDTH",
+    ("N", {
+        "cmake": "NBODY_N",
         "type": int,
         "default": None
     }),
-    ("sizeN", {
-        "cmake": "MM_SIZE_N",
+    ("unrollDepth", {
+        "cmake": "NBODY_UNROLL_DEPTH",
         "type": int,
         "default": None
     }),
-    ("sizeM", {
-        "cmake": "MM_SIZE_M",
+    ("pipelineFactor", {
+        "cmake": "NBODY_PIPELINE_FACTOR",
         "type": int,
         "default": None
     }),
-    ("sizeP", {
-        "cmake": "MM_SIZE_P",
-        "type": int,
-        "default": None
-    }),
-    ("tileSizeP", {
-        "cmake": "MM_TILE_SIZE_P",
-        "type": int,
-        "default": None
-    }),
-    ("tileSizeN", {
-        "cmake": "MM_TILE_SIZE_N",
-        "type": int,
-        "default": None
+    ("flatten", {
+      "cmake": "NBODY_FLATTEN",
+      "type": bool,
+      "default": False
     }),
     ("targetClock", {
-        "cmake": "MM_TARGET_CLOCK",
+        "cmake": "NBODY_TARGET_CLOCK",
         "type": int,
-        "default": 250
+        "default": 200
     }),
     ("target", {
-        "cmake": "MM_DSA_NAME",
+        "cmake": "NBODY_DSA_NAME",
         "type": str,
         "default": "xilinx:xil-accel-rd-ku115:4ddr-xpr:4.0"
     }),
@@ -137,6 +117,8 @@ class Configuration(object):
         pattern += "([^_]+)_"
       elif opt["type"] == int:
         pattern += "([0-9]+)_"
+      elif opt["type"] == bool:
+        pattern += "(True|False)_"
       else:
         raise TypeError("Unsupported type \"{}\".".format(str(opt["type"])))
     m = re.search(pattern[:-1], s) # Removing trailing underscore
@@ -235,12 +217,28 @@ def run_build(conf, clean=True, hardware=True):
     raise Exception(confStr + ": Software build failed.")
   print_status(conf, "Finished building software.")
   if hardware:
-    # timeStart = datetime.datetime.now()
-    # print_status(conf, "Running HLS...")
-    # if run_process(["make", PROJECT_CONFIG["makeSynthesis"]], confDir) != 0:
-    #   raise Exception(confStr + ": HLS failed.")
-    # print_status(conf, "Finished HLS after {}.".format(
-    #     time_only(datetime.datetime.now() - timeStart)))
+
+    timeStart = datetime.datetime.now()
+    print_status(conf, "Running HLS...")
+    if run_process(["make", "synthesize_nbody"], confDir) != 0:
+      raise Exception(confStr + ": HLS failed.")
+    print_status(conf, "Finished HLS in {}.".format(
+        time_only(datetime.datetime.now() - timeStart)))
+
+    timeStart = datetime.datetime.now()
+    print_status(conf, "Setting up project...")
+    if run_process(["make", "setup_project"], confDir) != 0:
+      raise Exception(confStr + ": project setup failed.")
+    print_status(conf, "Set up project in {}.".format(
+        time_only(datetime.datetime.now() - timeStart)))
+
+    timeStart = datetime.datetime.now()
+    print_status(conf, "Packaging kernel...")
+    if run_process(["make", "package_kernel"], confDir) != 0:
+      raise Exception(confStr + ": packaing kernel failed.")
+    print_status(conf, "Packaged kernel in {}.".format(
+        time_only(datetime.datetime.now() - timeStart)))
+
     timeStart = datetime.datetime.now()
     print_status(conf, "Starting kernel build...")
     if run_process(["make", PROJECT_CONFIG["makeKernel"]], confDir) != 0:
@@ -381,7 +379,7 @@ def get_build_result(buildDir):
     extract_result_build(conf)
     confs.append(conf)
   with open(os.path.join(PROJECT_CONFIG["buildDir"],
-                         "build_status.csv"), "w") as resultFile:
+                         "results.csv"), "w") as resultFile:
     resultFile.write(Consumption.csv_cols() + "\n")
     for conf in confs:
       resultFile.write(str(conf.consumption) + "\n")
