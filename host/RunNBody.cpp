@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <random>
 
 std::vector<MemoryPack_t> PackVelocity(std::vector<Vec_t> const &velocity) {
   std::cout << "Packing velocity vector..." << std::flush;
