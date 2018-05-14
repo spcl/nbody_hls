@@ -46,6 +46,9 @@ if __name__ == "__main__":
     scriptDir = os.path.dirname(os.path.realpath(__file__))
     projectDir = os.path.join(args["buildDir"], args["kernelName"] + "_ex")
 
+    if not os.path.exists(args["tmpDir"]):
+        os.makedirs(args["tmpDir"])
+
     shutil.copyfile(
         os.path.join(args["buildDir"], "config.tcl"),
         os.path.join(args["tmpDir"], "config.tcl"))

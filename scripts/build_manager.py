@@ -59,18 +59,27 @@ PROJECT_CONFIG = {
   ]),
 }
 
+def from_string(dtype, val):
+  if not isinstance(val, dtype):
+    if dtype == bool:
+      val = val.lower() in ["true", "1", "on"]
+    else:
+      val = dtype(val)
+  return val
+
 class Configuration(object):
 
   def __init__(self, *args, **kwargs):
     for opt, val in zip(
         list(PROJECT_CONFIG["options"].keys())[:len(args)], args):
-      setattr(self, opt, PROJECT_CONFIG["options"][opt]["type"](val))
+      setattr(
+        self, opt, from_string(PROJECT_CONFIG["options"][opt]["type"], val))
     for opt, val in kwargs.items():
       if opt not in PROJECT_CONFIG["options"]:
         raise KeyError("\"" + opt + "\" is not a valid option.")
       if opt in self.__dict__:
         raise KeyError("Option \"" + opt + "\" set both as arg and kwarg")
-      setattr(self, opt, PROJECT_CONFIG["options"][opt]["type"](val))
+      setattr(self, opt, val)
     unsetArgs = PROJECT_CONFIG["options"].keys() - self.__dict__.keys()
     for arg in unsetArgs:
       default = PROJECT_CONFIG["options"][arg]["default"]
@@ -105,7 +114,7 @@ class Configuration(object):
     return self.to_string()
 
   def cmake_command(self, sourceDir, extra=[]):
-    return (["cmake", sourceDir] +
+    return (["cmake", "-DNBODY_TMP_DIR={}".format(os.path.join(os.path.abspath(os.sep), "tmp", PROJECT_CONFIG["kernelName"] + "_" + self.to_string())), sourceDir] +
             ["-D{}={}".format(val["cmake"], getattr(self, key))
              for key, val in PROJECT_CONFIG["options"].items()] + extra)
 
@@ -171,6 +180,7 @@ class Consumption(object):
 
 def do_build(conf, cmakeOpts):
   cmakeCommand = conf.cmake_command("$1", cmakeOpts)
+  print(cmakeCommand)
   confStr = conf.to_string()
   confDir = os.path.join(PROJECT_CONFIG["buildDir"], conf.build_folder())
   try:
@@ -260,9 +270,10 @@ def run_build(conf, clean=True, hardware=True):
 
 def extract_result_build(conf):
   buildFolder = os.path.join(PROJECT_CONFIG["buildDir"], conf.build_folder())
-  xoccFolder = ("_xocc_" + PROJECT_CONFIG["kernelName"] + "_" +
+  xoccFolder = ("_xocc_link_" + PROJECT_CONFIG["kernelName"] + "_" +
                 PROJECT_CONFIG["kernelFile"] + ".dir")
   if not os.path.exists(os.path.join(buildFolder, xoccFolder)):
+    print(os.path.join(buildFolder, xoccFolder))
     conf.consumption = Consumption(conf, "no_intermediate", None, None, None,
                                    None, None, None)
     return
@@ -322,9 +333,9 @@ def extract_result_build(conf):
 def check_build_status(conf):
   buildFolder = os.path.join(PROJECT_CONFIG["buildDir"], conf.build_folder())
   kernelFolder = os.path.join(
-      buildFolder, ("_xocc_" + PROJECT_CONFIG["kernelFile"] + "_" +
+      buildFolder, ("_xocc_link_" + PROJECT_CONFIG["kernelName"] + "_" +
                     PROJECT_CONFIG["kernelFile"] + ".dir"),
-      "impl", "build", "system", PROJECT_CONFIG["kernelName"], "bitstream")
+      "impl", "build", "system", PROJECT_CONFIG["kernelFile"], "bitstream")
   try:
     log = open(
         os.path.join(buildFolder, "log.out"), "r").read()
@@ -332,7 +343,7 @@ def check_build_status(conf):
     return "no_build"
   try:
     report = open(
-        os.path.join(kernelFolder, PROJECT_CONFIG["kernelName"] + "_ipi",
+        os.path.join(kernelFolder, PROJECT_CONFIG["kernelFile"] + "_ipi",
                      "vivado.log")).read()
   except FileNotFoundError:
     return "no_build"
@@ -399,15 +410,13 @@ def scan_configurations(numProcs, configurations, cmakeOpts):
     print("All configurations finished running.")
 
 def files_to_copy(conf):
-  filesToCopy = ["configure.sh", PROJECT_CONFIG["kernelName"] + ".xclbin"]
-  kernelString = PROJECT_CONFIG["kernelName"]
-  xoccFolder = ("_xocc_" + PROJECT_CONFIG["kernelFile"] + "_" +
-                PROJECT_CONFIG["kernelName"] + ".dir")
-  hlsFolder = os.path.join(
-      xoccFolder, "impl", "kernels", PROJECT_CONFIG["kernelName"])
+  filesToCopy = ["configure.sh", PROJECT_CONFIG["kernelFile"] + ".xclbin"]
+  xoccFolder = ("_xocc_link_" + PROJECT_CONFIG["kernelName"] + "_" +
+                PROJECT_CONFIG["kernelFile"] + ".dir")
+  hlsFolder = ""
   kernelFolder = os.path.join(
       xoccFolder, "impl", "build",
-      "system", kernelString, "bitstream", kernelString + "_ipi")
+      "system", PROJECT_CONFIG["kernelFile"], "bitstream", PROJECT_CONFIG["kernelFile"] + "_ipi")
   filesToCopy.append(os.path.join(hlsFolder, "vivado_hls.log"))
   filesToCopy.append(os.path.join(kernelFolder, "vivado.log"))
   filesToCopy.append(os.path.join(kernelFolder, "vivado_warning.txt"))
@@ -594,8 +603,9 @@ if __name__ == "__main__":
 
     orderedArgs = OrderedDict()
     for key in argDict:
-      orderedArgs[key] = [PROJECT_CONFIG["options"][key]["type"](val) for val in
-                          argDict[key].split(",")]
+      orderedArgs[key] = [
+          from_string(PROJECT_CONFIG["options"][key]["type"], val)
+          for val in argDict[key].split(",")]
 
     product = itertools.product(*orderedArgs.values())
     configs = [Configuration(**dict(zip(orderedArgs.keys(), x))) for x in product]

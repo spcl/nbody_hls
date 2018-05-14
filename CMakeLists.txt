@@ -11,7 +11,8 @@ set(NBODY_DSA_NAME "xilinx:xil-accel-rd-ku115:4ddr-xpr:4.0" CACHE STRING
 set(NBODY_TARGET_CLOCK 300 CACHE STRING "Target clock for kernel.")
 set(NBODY_TARGET_CLOCK_UNCERTAINTY 1.08 CACHE STRING "Clock uncertainty for HLS.")
 set(NBODY_FLATTEN OFF CACHE STRING "Flatten the loops to save cycles on saturating and draining the pipeline")
-set(MM_SINGLE_SLR OFF CACHE STRING "Only place and route on a single SLR of the KU115")
+set(NBODY_SINGLE_SLR OFF CACHE STRING "Only place and route on a single SLR of the KU115")
+set(NBODY_TMP_DIR /tmp CACHE STRING "Temporary directory for SDx build files")
 
 # Domain options
 set(NBODY_DATA_TYPE "float" CACHE STRING "Matrix data type.")
@@ -64,7 +65,7 @@ add_custom_target(synthesize_nbody
 set(DONUT_KERNEL_NAME nbody_kernel) 
 set(DONUT_KERNEL_DIRECTORY ${CMAKE_BINARY_DIR})
 set(DONUT_VENDOR_NAME SPCL)
-set(DONUT_TMP_DIR /tmp)
+set(DONUT_TMP_DIR ${NBODY_TMP_DIR})
 set(DONUT_PART_NAME ${NBODY_PART_NAME})
 set(DONUT_SOURCES_DIRECTORY ${CMAKE_BINARY_DIR}/${NBODY_PROJECT_NAME}/${NBODY_PART_NAME}/syn/verilog)
 if(SDAccel_VERSION STREQUAL "2017.4")
