@@ -200,7 +200,7 @@ int main(int argc, char **argv) {
               << std::endl;
     return 1;
   }
-
+  int fromFile = 1;
   std::vector<PosMass_t> positionRef(position);
   std::vector<Vec_t> velocityRef(velocity);
 
@@ -209,6 +209,7 @@ int main(int argc, char **argv) {
   auto inFile = std::ifstream(filenamestr.str(), std::ifstream::in);
   if (inFile.good()) {
     std::cout << "Reading from file ... \n";
+    fromFile = 0;
     std::string line;
     for(int i = 0; i < kNBodies; i++){
       for(int j = 0; j <= kDims; j ++){
@@ -254,7 +255,7 @@ int main(int argc, char **argv) {
   for (int i = 0; i < kNBodies; ++i) {
    if (i < kPrintBodies) {
      std::cout << positionHardware[offset + i] << " / "
-               << positionRef[offset + i] << ", "
+               << positionRef[offset*fromFile + i] << ", "
                << velocityHardware[i] << " / "
                << velocityRef[i] << "\n";
    }
