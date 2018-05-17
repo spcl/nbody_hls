@@ -96,8 +96,8 @@ int main(int argc, char **argv) {
   std::vector<PosMass_t> position(2 * kNBodies); // Double buffering
 
   // maybe make those configurable in the future :), if we use them
-  float clusterScale = 1.54f;
-  float velocityScale = 8.0f;
+  Data_t clusterScale = 1.54f;
+  Data_t velocityScale = 8.0f;
 
   std::random_device rd;
   std::default_random_engine rng(5); // Use fixed seed
@@ -105,16 +105,16 @@ int main(int argc, char **argv) {
   std::uniform_real_distribution<double> distVelocity(-1e3, 1e3);
   std::uniform_real_distribution<double> distPosition(-1e6, 1e6);
 
-  float scale = clusterScale * std::max<Data_t>(1.0, kNBodies / (1024.0));
-  float vscale = velocityScale * scale;
+  Data_t scale = clusterScale * std::max<Data_t>(1.0, kNBodies / (1024.0));
+  Data_t vscale = velocityScale * scale;
 
   int i = 0;
 
   while (i < kNBodies) {
     Vec_t point;
-    float lenSqr = 0.0;
+    Data_t lenSqr = 0.0;
     for (int j = 0; j < kDims; j++) {
-      point[j] = rand() / (float)RAND_MAX * 2 - 1;
+      point[j] = rand() / Data_t(RAND_MAX * 2 - 1);
       lenSqr += point[j] * point[j];
     }
     if (lenSqr > 1) continue;
@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
     Vec_t vel;
     lenSqr = 0.0;
     for (int j = 0; j < kDims; j++) {
-      vel[j] = rand() / (float)RAND_MAX * 2 - 1;
+      vel[j] = rand() / Data_t(RAND_MAX * 2 - 1);
       lenSqr += vel[j] * vel[j];
     }
     if (lenSqr > 1) continue;
@@ -233,12 +233,14 @@ int main(int argc, char **argv) {
     outputFile.open(filenamestr.str());
     for(int i = 0; i < kNBodies; i++){
       for(int j = 0; j <= kDims; j ++){
-        outputFile << positionRef[i][j] << std::endl;
+        Data_t val = positionRef[i][j]; 
+        outputFile << float(val) << std::endl;
       }
     }
     for(int i = 0; i < kNBodies; i++){
       for(int j = 0; j < kDims; j ++){
-        outputFile << velocityRef[i][j] << std::endl;
+        const Data_t val = velocityRef[i][j];
+        outputFile << float(val) << std::endl;
       }
     }
     outputFile.close();
@@ -252,16 +254,17 @@ int main(int argc, char **argv) {
   unsigned mismatches = 0;
   const unsigned offset = (timesteps % 2 == 0) ? 0 : kNBodies;
   for (int i = 0; i < kNBodies; ++i) {
-   if (i < kPrintBodies) {
-     std::cout << positionHardware[offset + i] << " / "
-               << positionRef[offset + i] << ", "
-               << velocityHardware[i] << " / "
-               << velocityRef[i] << "\n";
-   }
+    // if (i < kPrintBodies) {
+    //   std::cout << float(Data_t(positionHardware[offset + i])) << " / "
+    //             << float(Data_t(positionRef[offset + i])) << ", "
+    //             << float(Data_t(velocityHardware[i])) << " / "
+    //             << float(Data_t(velocityRef[i])) << "\n";
+    // }
     bool mismatch = false;
     for (int d = 0; d < kDims; ++d) {
-      const auto diff = std::abs(positionHardware[offset + i][d] -
-                                 positionRef[offset + i][d]);
+      const Data_t hw = positionHardware[offset + i][d];
+      const Data_t ref = positionRef[offset + i][d];
+      const auto diff = std::abs(hw - ref);
       totalDiff += diff;
       if (diff >= 1e-4) {
         mismatch = true;

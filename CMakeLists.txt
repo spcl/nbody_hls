@@ -48,6 +48,7 @@ add_library(nbodykernel ${NBODY_KERNEL_SRC})
 target_link_libraries(nbodykernel ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(Stats src/Stats.cpp)
+target_link_libraries(Stats ${SDAccel_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} nbodykernel)
 
 add_executable(TestNBody test/TestNBody.cpp)
 target_link_libraries(TestNBody ${SDAccel_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} nbodykernel)

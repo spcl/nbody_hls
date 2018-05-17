@@ -474,8 +474,9 @@ Update_Steps:
     Update_Dims:
       for (int d = 0; d < kDims; d++) {
         #pragma HLS UNROLL
-        velNew[d] = vel[d] + acc[d] * kTimestep;
-        pmNew[d] = pm[d] + velNew[d] * kTimestep;
+        const Data_t v = vel[d] + acc[d] * kTimestep;
+        velNew[d] = v;
+        pmNew[d] = pm[d] + v * kTimestep;
       }
       pmNew[kDims] = pm[kDims];
       velocityOut.Push(velNew);
