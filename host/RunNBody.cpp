@@ -95,7 +95,6 @@ int main(int argc, char **argv) {
   std::vector<Vec_t> velocity(kNBodies);
   std::vector<PosMass_t> position(2 * kNBodies); // Double buffering
 
-  // maybe make those configurable in the future :), if we use them
   float clusterScale = 1.54f;
   float velocityScale = 8.0f;
 
@@ -107,7 +106,11 @@ int main(int argc, char **argv) {
 
   float scale = clusterScale * std::max<Data_t>(1.0, kNBodies / (1024.0));
   float vscale = velocityScale * scale;
+
+  //The number of bodies used as padding to make sure all the writes get pushed through.
+  //BE CAREFUL: DO NOT USE THE LAST flushfactor ELEMENTS
   int flushfactor = (kPipelineFactor*kUnrollDepth >= 256) ? 256 : kPipelineFactor*kUnrollDepth;
+
   int i = 0;
 
   while (i < kNBodies) {
@@ -131,6 +134,8 @@ int main(int argc, char **argv) {
       position[i][j] = point[j] * scale;
       velocity[i][j] = vel[j] * vscale;
     }
+
+    //set mass to 0 for the padding
     if(i < kNBodies - flushfactor){
       position[i][kDims] = 1.0f;  // mass
     }else{
@@ -287,6 +292,8 @@ int main(int argc, char **argv) {
     std::cerr << "Verification failed." << std::endl;
     return 1;
   }
+
+  //the performance for the not padded bodies
   double performance = (kNBodies - flushfactor)*(kNBodies - flushfactor)*timesteps*(6*kDims + 4)/timeelapsed;
   std::cout << "Performants (flop/s): " << performance << "\n";
   std::cout << "Done." << std::endl;
