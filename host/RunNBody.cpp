@@ -107,7 +107,7 @@ int main(int argc, char **argv) {
 
   float scale = clusterScale * std::max<Data_t>(1.0, kNBodies / (1024.0));
   float vscale = velocityScale * scale;
-
+  int flushfactor = (kPipelineFactor*kUnrollDepth >= 256) ? 256 : kPipelineFactor*kUnrollDepth;
   int i = 0;
 
   while (i < kNBodies) {
@@ -131,9 +131,11 @@ int main(int argc, char **argv) {
       position[i][j] = point[j] * scale;
       velocity[i][j] = vel[j] * vscale;
     }
-
-    position[i][kDims] = 1.0f;  // mass
-
+    if(i < kNBodies - flushfactor){
+      position[i][kDims] = 1.0f;  // mass
+    }else{
+      position[i][kDims] = 0.0f;
+    }
     i++;
   }
 
@@ -142,7 +144,7 @@ int main(int argc, char **argv) {
 
   auto positionMem = PackPosition(position);
   auto velocityMem = PackVelocity(velocity);
-
+  double timeelapsed;
   try {
 
     std::cout << "Initializing OpenCL context..." << std::flush;
@@ -183,14 +185,13 @@ int main(int argc, char **argv) {
     positionDevice.CopyToHost(&positionMem[0]);
     velocityDevice.CopyToHost(&velocityMem[0]);
     std::cout << " Done.\n";
-
     positionHardware = UnpackPosition(positionMem);
     velocityHardware = UnpackVelocity(velocityMem);
 
     auto endWithMemory = std::chrono::high_resolution_clock::now();
     auto elapsedWithMemory = (endWithMemory - startWithMemory).count();
-
-    std::cout << "Kernel executed in " << elapsed.first << " seconds.\n";
+    timeelapsed = elapsed.first;
+    std::cout << "Kernel executed in " << timeelapsed << " seconds.\n";
     // corresponding to a performance of " << perf
     // << " GOp/s (" << perfWithMemory
     // << " including memory transfers).\n";
@@ -286,6 +287,8 @@ int main(int argc, char **argv) {
     std::cerr << "Verification failed." << std::endl;
     return 1;
   }
+  double performance = (kNBodies - flushfactor)*(kNBodies - flushfactor)*timesteps*(6*kDims + 4)/timeelapsed;
+  std::cout << "Performants (flop/s): " << performance << "\n";
   std::cout << "Done." << std::endl;
 
   return 0;
