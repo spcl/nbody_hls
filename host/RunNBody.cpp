@@ -113,11 +113,12 @@ int main(int argc, char **argv) {
 
   int i = 0;
 
+  std::cout << "Filling random values..." << std::flush;
   while (i < kNBodies) {
     Vec_t point;
     Data_t lenSqr = 0.0;
     for (int j = 0; j < kDims; j++) {
-      point[j] = rand() / Data_t(RAND_MAX * 2 - 1);
+      point[j] = rand() / Data_t(RAND_MAX) * 2 - 1;
       lenSqr += point[j] * point[j];
     }
     if (lenSqr > 1) continue;
@@ -125,7 +126,7 @@ int main(int argc, char **argv) {
     Vec_t vel;
     lenSqr = 0.0;
     for (int j = 0; j < kDims; j++) {
-      vel[j] = rand() / Data_t(RAND_MAX * 2 - 1);
+      vel[j] = rand() / Data_t(RAND_MAX) * 2 - 1;
       lenSqr += vel[j] * vel[j];
     }
     if (lenSqr > 1) continue;
@@ -143,6 +144,7 @@ int main(int argc, char **argv) {
     }
     i++;
   }
+  std::cout << "Done." << std::endl;
 
   std::vector<PosMass_t> positionHardware(position);
   std::vector<Vec_t> velocityHardware(velocity);
