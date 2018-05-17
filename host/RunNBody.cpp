@@ -294,8 +294,8 @@ int main(int argc, char **argv) {
   }
 
   //the performance for the not padded bodies
-  double performance = (kNBodies - flushfactor)*(kNBodies - flushfactor)*timesteps*(6*kDims + 4)/timeelapsed;
-  std::cout << "Performants (flop/s): " << performance << "\n";
+  double performance = (kNBodies - flushfactor)*(kNBodies - flushfactor)*timesteps*(6.*kDims + 4.)/timeelapsed;
+  std::cout << "Performance (flop/s): " << performance << "\n";
   std::cout << "Done." << std::endl;
 
   return 0;
