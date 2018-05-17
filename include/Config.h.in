@@ -15,10 +15,10 @@ constexpr unsigned kUnrollDepth = ${NBODY_UNROLL_DEPTH};
 constexpr unsigned kPipelineFactor = ${NBODY_PIPELINE_FACTOR};
 constexpr unsigned kDims = ${NBODY_DIMS}; // Will currently fail if != 3
 constexpr unsigned kSteps = ${NBODY_STEPS};
-constexpr Data_t kTimestep = ${NBODY_TIMESTEP}; // dt
+const Data_t kTimestep = ${NBODY_TIMESTEP}; // dt
 constexpr float kFrequency = ${NBODY_TARGET_CLOCK};
-constexpr float kSoftening = ${NBODY_SOFTENING_TERM}; // eps^2
-constexpr float kDampingFactor = ${NBODY_DAMPING_FACTOR};
+const Data_t kSoftening = ${NBODY_SOFTENING_TERM}; // eps^2
+const Data_t kDampingFactor = ${NBODY_DAMPING_FACTOR};
 
 // Tiling scheme:
 //

@@ -95,8 +95,8 @@ int main(int argc, char **argv) {
   std::vector<Vec_t> velocity(kNBodies);
   std::vector<PosMass_t> position(2 * kNBodies); // Double buffering
 
-  float clusterScale = 1.54f;
-  float velocityScale = 8.0f;
+  Data_t clusterScale = 1.54f;
+  Data_t velocityScale = 8.0f;
 
   std::random_device rd;
   std::default_random_engine rng(5); // Use fixed seed
@@ -104,8 +104,8 @@ int main(int argc, char **argv) {
   std::uniform_real_distribution<double> distVelocity(-1e3, 1e3);
   std::uniform_real_distribution<double> distPosition(-1e6, 1e6);
 
-  float scale = clusterScale * std::max<Data_t>(1.0, kNBodies / (1024.0));
-  float vscale = velocityScale * scale;
+  Data_t scale = clusterScale * std::max<Data_t>(1.0, kNBodies / (1024.0));
+  Data_t vscale = velocityScale * scale;
 
   //The number of bodies used as padding to make sure all the writes get pushed through.
   //BE CAREFUL: DO NOT USE THE LAST flushfactor ELEMENTS
@@ -115,9 +115,9 @@ int main(int argc, char **argv) {
 
   while (i < kNBodies) {
     Vec_t point;
-    float lenSqr = 0.0;
+    Data_t lenSqr = 0.0;
     for (int j = 0; j < kDims; j++) {
-      point[j] = rand() / (float)RAND_MAX * 2 - 1;
+      point[j] = rand() / Data_t(RAND_MAX * 2 - 1);
       lenSqr += point[j] * point[j];
     }
     if (lenSqr > 1) continue;
@@ -125,7 +125,7 @@ int main(int argc, char **argv) {
     Vec_t vel;
     lenSqr = 0.0;
     for (int j = 0; j < kDims; j++) {
-      vel[j] = rand() / (float)RAND_MAX * 2 - 1;
+      vel[j] = rand() / Data_t(RAND_MAX * 2 - 1);
       lenSqr += vel[j] * vel[j];
     }
     if (lenSqr > 1) continue;
@@ -240,12 +240,14 @@ int main(int argc, char **argv) {
     outputFile.open(filenamestr.str());
     for(int i = 0; i < kNBodies; i++){
       for(int j = 0; j <= kDims; j ++){
-        outputFile << positionRef[i][j] << std::endl;
+        Data_t val = positionRef[i][j]; 
+        outputFile << float(val) << std::endl;
       }
     }
     for(int i = 0; i < kNBodies; i++){
       for(int j = 0; j < kDims; j ++){
-        outputFile << velocityRef[i][j] << std::endl;
+        const Data_t val = velocityRef[i][j];
+        outputFile << float(val) << std::endl;
       }
     }
     outputFile.close();
@@ -267,8 +269,9 @@ int main(int argc, char **argv) {
    }
     bool mismatch = false;
     for (int d = 0; d < kDims; ++d) {
-      const auto diff = std::abs(positionHardware[offset + i][d] -
-                                 positionRef[offset + i][d]);
+      const Data_t hw = positionHardware[offset + i][d];
+      const Data_t ref = positionRef[offset + i][d];
+      const auto diff = std::abs(hw - ref);
       totalDiff += diff;
       if (diff >= 1e-4) {
         mismatch = true;
