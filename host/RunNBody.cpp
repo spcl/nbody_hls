@@ -109,7 +109,8 @@ int main(int argc, char **argv) {
 
   //The number of bodies used as padding to make sure all the writes get pushed through.
   //BE CAREFUL: DO NOT USE THE LAST flushfactor ELEMENTS
-  int flushfactor = (kPipelineFactor*kUnrollDepth >= 256) ? 256 : kPipelineFactor*kUnrollDepth;
+  constexpr int flushfactor = 256;
+  static_assert(kNBodies > flushfactor, "Number of bodies too low");
 
   int i = 0;
 
