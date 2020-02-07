@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- 2016, Copyright Xilinx, Inc. -->
 
-<option_map versionMajor="1" versionMinor="0">
+<option_map versionMajor="2" versionMinor="0">
   <item>
     <from>
       <name>--optimize=0</name>

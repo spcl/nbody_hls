@@ -5,14 +5,14 @@ cmake_minimum_required(VERSION 2.8)
 project(nbody_hls C CXX)
 
 # Target options
-set(NBODY_PART_NAME "xcku115-flvb2104-2-e" CACHE STRING "Part name for HLS.")
-set(NBODY_DSA_NAME "xilinx:xil-accel-rd-ku115:4ddr-xpr:4.0" CACHE STRING
-    "DSA string for xocc.")
+set(NBODY_PART_NAME "xcvu9p-flgb2104-2-i" CACHE STRING "Part name for HLS.")
+set(NBODY_DSA_NAME "xilinx_vcu1525_dynamic_5_1" CACHE STRING
+    "DSA string for SDAccel.")
 set(NBODY_TARGET_CLOCK 300 CACHE STRING "Target clock for kernel.")
 set(NBODY_TARGET_CLOCK_UNCERTAINTY 1.08 CACHE STRING "Clock uncertainty for HLS.")
 set(NBODY_FLATTEN OFF CACHE STRING "Flatten the loops to save cycles on saturating and draining the pipeline")
 set(NBODY_SINGLE_SLR OFF CACHE STRING "Only place and route on a single SLR of the KU115")
-set(NBODY_TMP_DIR /tmp CACHE STRING "Temporary directory for SDx build files")
+set(NBODY_TMP_DIR /tmp CACHE STRING "Temporary directory for kernel build files")
 
 # Domain options
 set(NBODY_DATA_TYPE "float" CACHE STRING "Matrix data type.")
@@ -32,9 +32,11 @@ find_package(Vitis REQUIRED)
 find_package(Threads REQUIRED)
 
 include_directories(include hlslib/include ${CMAKE_BINARY_DIR} ${Vitis_INCLUDE_DIRS})
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1z -DHLSLIB_LEGACY_SDX=0")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -DHLSLIB_LEGACY_SDX=0")
+set(CMAKE_VPP_FLAGS "${CMAKE_VPP_FLAGS} -std=c++11 -DHLSLIB_LEGACY_SDX=0")
 if(NBODY_FLATTEN)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNBODY_FLATTEN")
+  set(CMAKE_VPP_FLAGS "${CMAKE_VPP_FLAGS} -DNBODY_FLATTEN")
 endif()
 
 configure_file(include/Config.h.in Config.h)
@@ -59,8 +61,7 @@ set(NBODY_PROJECT_NAME "NBody")
 string(REPLACE ";" " " NBODY_SRC_SYNTHESIS "${NBODY_KERNEL_SRC}")
 set(NBODY_ENTRY_FUNCTION "NBody")
 configure_file(scripts/Synthesis.tcl.in SynthesizeNBody.tcl)
-add_custom_target(synthesize_nbody
-  COMMAND ${Vitis_VIVADO_HLS} -f SynthesizeNBody.tcl)
+add_custom_target(synthesize_nbody COMMAND ${Vitis_HLS} -f SynthesizeNBody.tcl)
 
 # Vivado project options
 set(DONUT_KERNEL_NAME nbody_kernel) 
@@ -69,11 +70,6 @@ set(DONUT_VENDOR_NAME SPCL)
 set(DONUT_TMP_DIR ${NBODY_TMP_DIR})
 set(DONUT_PART_NAME ${NBODY_PART_NAME})
 set(DONUT_SOURCES_DIRECTORY ${CMAKE_BINARY_DIR}/${NBODY_PROJECT_NAME}/${NBODY_PART_NAME}/syn/verilog)
-if(Vitis_VERSION STREQUAL "2017.4")
-  set(DONUT_CALL_PACKAGE_FUNCTION 1)
-else()
-  set(DONUT_CALL_PACKAGE_FUNCTION 0)
-endif() 
 configure_file(scripts/config.tcl.in config.tcl)
 configure_file(hw/top.v.in top.v)
 configure_file(scripts/O_opt_design_pre.tcl data/sdx/xocc/O_opt_design_pre.tcl) 
@@ -97,12 +93,12 @@ set(NBODY_VPP_COMMAND
   -I${CMAKE_SOURCE_DIR}/hlslib/include
   -I${CMAKE_BINARY_DIR}
   ${DONUT_KERNEL_NAME}.xo 
-  --kernel NBody
+  --kernel ${DONUT_KERNEL_NAME} 
   --platform ${NBODY_DSA_NAME}
-  --xp prop:kernel.${NBODY_ENTRY_FUNCTION}.kernel_flags="${CMAKE_CXX_FLAGS} -DNBODY_SYNTHESIS -DHLSLIB_SYNTHESIS"
-  --sp ${DONUT_KERNEL_NAME}_1.m_axi_gmem0:bank0
-  --sp ${DONUT_KERNEL_NAME}_1.m_axi_gmem1:bank1
-  --advanced.prop kernel.${DONUT_KERNEL_NAME}.kernel_flags="${CMAKE_CXX_FLAGS} -DNBODY_SYNTHESIS -DHLSLIB_SYNTHESIS")
+  --sp ${DONUT_KERNEL_NAME}_1.m00_axi:bank0
+  --sp ${DONUT_KERNEL_NAME}_1.m01_axi:bank1
+  --xp prop:kernel.${DONUT_KERNEL_NAME}.kernel_flags="${CMAKE_VPP_FLAGS} -DNBODY_SYNTHESIS -DHLSLIB_SYNTHESIS"
+  --max_memory_ports all)
 if(NBODY_SINGLE_SLR)
   set(NBODY_VPP_COMMAND ${NBODY_VPP_COMMAND} -O4)
 else()
