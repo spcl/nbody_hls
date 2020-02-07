@@ -3,7 +3,7 @@
 /// @copyright This software is copyrighted under the BSD 3-Clause License.
 
 #include "NBody.h"
-#include "hlslib/SDAccel.h"
+#include "hlslib/xilinx/SDAccel.h"
 
 #include <iostream>
 #include <fstream>

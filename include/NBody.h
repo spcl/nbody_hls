@@ -5,11 +5,11 @@
 #pragma once
 
 #include "Config.h"
-#include "hlslib/DataPack.h"
-#include "hlslib/Operators.h"
-#include "hlslib/TreeReduce.h"
-#include "hlslib/Utility.h"
-#include "hlslib/Stream.h"
+#include "hlslib/xilinx/DataPack.h"
+#include "hlslib/xilinx/Operators.h"
+#include "hlslib/xilinx/TreeReduce.h"
+#include "hlslib/xilinx/Utility.h"
+#include "hlslib/xilinx/Stream.h"
 
 constexpr int kMemoryWidth = kMemoryWidthBytes / sizeof(Data_t);
 

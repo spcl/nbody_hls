@@ -5,7 +5,7 @@
 #pragma once
 
 #include "NBody.h"
-#include "hlslib/Stream.h"
+#include "hlslib/xilinx/Stream.h"
 
 void ReadMemory_PositionMass(MemoryPack_t const memory[],
                              hlslib::Stream<MemoryPack_t> &pipe,

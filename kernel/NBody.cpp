@@ -1,8 +1,8 @@
 #include "NBody.h"
 #include "Memory.h"
-#include "hlslib/DataPack.h"
-#include "hlslib/Simulation.h"
-#include "hlslib/Stream.h"
+#include "hlslib/xilinx/DataPack.h"
+#include "hlslib/xilinx/Simulation.h"
+#include "hlslib/xilinx/Stream.h"
 #include <cassert>
 
 // Notes(Simon): The CUDA implementation assumes that the input is given by
