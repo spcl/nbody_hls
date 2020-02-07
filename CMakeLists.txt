@@ -11,7 +11,6 @@ set(NBODY_DSA_NAME "xcu250-figd2104-2L-e" CACHE STRING
 set(NBODY_TARGET_CLOCK 300 CACHE STRING "Target clock for kernel.")
 set(NBODY_TARGET_CLOCK_UNCERTAINTY 1.08 CACHE STRING "Clock uncertainty for HLS.")
 set(NBODY_FLATTEN OFF CACHE STRING "Flatten the loops to save cycles on saturating and draining the pipeline")
-set(NBODY_SINGLE_SLR OFF CACHE STRING "Only place and route on a single SLR of the KU115")
 set(NBODY_TMP_DIR /tmp CACHE STRING "Temporary directory for kernel build files")
 
 # Domain options
@@ -99,11 +98,6 @@ set(NBODY_VPP_COMMAND
   --sp ${DONUT_KERNEL_NAME}_1.m01_axi:bank1
   --xp prop:kernel.${DONUT_KERNEL_NAME}.kernel_flags="${CMAKE_VPP_FLAGS} -DNBODY_SYNTHESIS -DHLSLIB_SYNTHESIS"
   --max_memory_ports all)
-if(NBODY_SINGLE_SLR)
-  set(NBODY_VPP_COMMAND ${NBODY_VPP_COMMAND} -O4)
-else()
-  set(NBODY_VPP_COMMAND ${NBODY_VPP_COMMAND} -O3)
-endif()
 if(NBODY_TARGET_CLOCK GREATER 0)
   set(NBODY_VPP_COMMAND ${NBODY_VPP_COMMAND}
       --kernel_frequency ${NBODY_TARGET_CLOCK})
