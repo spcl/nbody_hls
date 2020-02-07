@@ -6,7 +6,7 @@ project(nbody_hls C CXX)
 
 # Target options
 set(NBODY_PART_NAME "xcvu9p-flgb2104-2-i" CACHE STRING "Part name for HLS.")
-set(NBODY_DSA_NAME "xilinx_vcu1525_dynamic_5_1" CACHE STRING
+set(NBODY_DSA_NAME "xcu250-figd2104-2L-e" CACHE STRING
     "DSA string for SDAccel.")
 set(NBODY_TARGET_CLOCK 300 CACHE STRING "Target clock for kernel.")
 set(NBODY_TARGET_CLOCK_UNCERTAINTY 1.08 CACHE STRING "Clock uncertainty for HLS.")
@@ -69,7 +69,7 @@ set(DONUT_KERNEL_DIRECTORY ${CMAKE_BINARY_DIR})
 set(DONUT_VENDOR_NAME SPCL)
 set(DONUT_TMP_DIR ${NBODY_TMP_DIR})
 set(DONUT_PART_NAME ${NBODY_PART_NAME})
-set(DONUT_SOURCES_DIRECTORY ${CMAKE_BINARY_DIR}/${NBODY_PROJECT_NAME}/${NBODY_PART_NAME}/syn/verilog)
+set(DONUT_SOURCES_DIRECTORY ${CMAKE_BINARY_DIR}/${NBODY_PROJECT_NAME}/${NBODY_PART_NAME}/impl/verilog)
 configure_file(scripts/config.tcl.in config.tcl)
 configure_file(hw/top.v.in top.v)
 configure_file(scripts/O_opt_design_pre.tcl data/sdx/xocc/O_opt_design_pre.tcl) 

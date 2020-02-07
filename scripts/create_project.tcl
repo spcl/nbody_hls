@@ -17,7 +17,7 @@ set kernelDir $workspace/$kernelPrjName
 create_project kernel_wizard $wizardDir -part $partName -force
 
 # Instantiate the SDx kernel wizard IP
-create_ip -name sdx_kernel_wizard -vendor xilinx.com -library ip -module_name $kernelName 
+create_ip -name rtl_kernel_wizard -vendor xilinx.com -library ip -module_name $kernelName 
 
 # We have to first write the command to a string so the variables are expanded,
 # otherwise the variable names (rather than their content) are written to the

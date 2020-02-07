@@ -7,7 +7,7 @@ source $prjDir/imports/package_kernel.tcl
 
 set path_to_project [get_property DIRECTORY [current_project]]
 set ip_name ${kernel_name}_v1_0
-set xo_file ${path_to_project}/sdx_imports/${kernel_name}.xo
+set xo_file ${path_to_project}/imports/${kernel_name}.xo
 set kernel_xml_file ${path_to_project}/imports/kernel.xml
 set path_to_packaged ${path_to_project}/${ip_name}
 puts "INFO: Running package_project command"

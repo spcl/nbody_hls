@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
         run_tcl(os.path.join(scriptDir, "package_kernel.tcl"), args)
         shutil.copyfile(
-            os.path.join(projectDir, "sdx_imports",
+            os.path.join(projectDir, "imports",
                          args["kernelName"] + ".xo"),
             os.path.join(args["buildDir"], args["kernelName"] + ".xo"))
 
