@@ -159,6 +159,10 @@ int main(int argc, char **argv) {
     hlslib::ocl::Context context;
     std::cout << " Done.\n";
 
+    std::cout << "Programming device..." << std::flush;
+    auto program = context.MakeProgram("NBody.xclbin");
+    std::cout << " Done.\n";
+
     std::cout << "Initializing device memory..." << std::flush;
     auto positionDevice =
         context.MakeBuffer<MemoryPack_t, hlslib::ocl::Access::readWrite>(
@@ -174,8 +178,7 @@ int main(int argc, char **argv) {
     velocityDevice.CopyFromHost(velocityMem.cbegin());
     std::cout << " Done.\n";
 
-    std::cout << "Programming device..." << std::flush;
-    auto program = context.MakeProgram("NBody.xclbin");
+    std::cout << "Initializing kernel..." << std::flush;
     auto kernel =
         program.MakeKernel("nbody_kernel", timesteps, positionDevice,
                            positionDevice, velocityDevice, velocityDevice);
