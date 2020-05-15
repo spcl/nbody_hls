@@ -5,8 +5,8 @@ cmake_minimum_required(VERSION 2.8)
 project(nbody_hls C CXX)
 
 # Target options
-set(NBODY_PART_NAME "xcvu9p-flgb2104-2-i" CACHE STRING "Part name for HLS.")
-set(NBODY_DSA_NAME "xcu250-figd2104-2L-e" CACHE STRING
+set(NBODY_PART_NAME "xcu250-figd2104-2L-e" CACHE STRING "Part name for HLS.")
+set(NBODY_DSA_NAME "xilinx_u250_xdma_201830_2" CACHE STRING
     "DSA string for SDAccel.")
 set(NBODY_TARGET_CLOCK 300 CACHE STRING "Target clock for kernel.")
 set(NBODY_TARGET_CLOCK_UNCERTAINTY 1.08 CACHE STRING "Clock uncertainty for HLS.")
