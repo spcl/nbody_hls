@@ -7,6 +7,7 @@
 #include "Config.h"
 #include "hlslib/xilinx/DataPack.h"
 #include "hlslib/xilinx/Operators.h"
+#include "hlslib/xilinx/Resource.h"
 #include "hlslib/xilinx/TreeReduce.h"
 #include "hlslib/xilinx/Utility.h"
 #include "hlslib/xilinx/Stream.h"
@@ -63,19 +64,30 @@ inline Vec_t ComputeAcceleration(PosMass_t const &s0, PosMass_t const &s1) {
   for (int d = 0; d < kDims; ++d) {
     #pragma HLS UNROLL
     const auto diff_i = s1[d] - s0[d];
+    HLSLIB_RESOURCE_PRAGMA(diff_i, NBODY_ADD_CORE)
     diff[d] = diff_i;
-    diffSquared[d] = diff_i * diff_i;
+    const auto squared = diff_i * diff_i;
+    HLSLIB_RESOURCE_PRAGMA(squared, NBODY_MULT_CORE) 
+    diffSquared[d] = squared;
   }
   const Data_t distSquared =
       hlslib::TreeReduce<Data_t, hlslib::op::Add<Data_t>, kDims>(diffSquared);
   const Data_t distSoftened = soften ? (distSquared + kSoftening) : distSquared;
-  const Data_t distCubed = distSoftened * distSoftened * distSoftened;
+  HLSLIB_RESOURCE_PRAGMA(distSoftened, NBODY_ADD_CORE) 
+  const Data_t distCubedTmp = distSoftened * distSoftened;
+  HLSLIB_RESOURCE_PRAGMA(distCubedTmp, NBODY_MULT_CORE) 
+  const Data_t distCubed = distCubedTmp * distSoftened;
+  HLSLIB_RESOURCE_PRAGMA(distCubed, NBODY_MULT_CORE) 
   const Data_t dist = std::sqrt(distCubed);
   const Data_t distCubedReciprocal = Data_t(1) / dist;
   Vec_t acc;
   for (int d = 0; d < kDims; ++d) {
     #pragma HLS UNROLL
-    acc[d] = s1[kDims] * diff[d] * distCubedReciprocal;
+    const auto tmp0 = s1[kDims] * diff[d];
+    HLSLIB_RESOURCE_PRAGMA(tmp0, NBODY_MULT_CORE) 
+    const auto tmp1 = tmp0 * distCubedReciprocal;
+    HLSLIB_RESOURCE_PRAGMA(tmp1, NBODY_MULT_CORE) 
+    acc[d] = tmp1;
   }
   return acc;
 }

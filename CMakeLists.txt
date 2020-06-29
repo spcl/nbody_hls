@@ -24,6 +24,8 @@ set(NBODY_PIPELINE_FACTOR 16 CACHE STRING
     "Factor to increase tile size for pipelining accumulations.")
 set(NBODY_SOFTENING_TERM 0.00125 CACHE STRING "Epsilon used for Softening.")
 set(NBODY_DAMPING_FACTOR 0.995 CACHE STRING "Damping factor for velocity.")
+set(NBODY_ADD_CORE "FAddSub_nodsp" CACHE STRING "Floating point core to use for adds.")
+set(NBODY_MULT_CORE "FMul_fulldsp" CACHE STRING "Floating point core to use for mults.")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/hlslib/cmake)
 
@@ -32,7 +34,7 @@ find_package(Threads REQUIRED)
 
 include_directories(include hlslib/include ${CMAKE_BINARY_DIR} ${Vitis_INCLUDE_DIRS})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -DHLSLIB_LEGACY_SDX=0")
-set(CMAKE_VPP_FLAGS "${CMAKE_VPP_FLAGS} -std=c++11 -DHLSLIB_LEGACY_SDX=0")
+set(CMAKE_VPP_FLAGS "${CMAKE_VPP_FLAGS} -std=c++11 -DHLSLIB_LEGACY_SDX=0 -DHLSLIB_OPERATOR_ADD_RESOURCE=${NBODY_ADD_CORE} -DNBODY_ADD_CORE=${NBODY_ADD_CORE} -DNBODY_MULT_CORE=${NBODY_MULT_CORE}")
 if(NBODY_FLATTEN)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNBODY_FLATTEN")
   set(CMAKE_VPP_FLAGS "${CMAKE_VPP_FLAGS} -DNBODY_FLATTEN")
