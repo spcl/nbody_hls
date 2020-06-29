@@ -15,11 +15,10 @@ int main(int argc, char **argv) {
   }
   const auto timesteps = std::stoul(argv[1]);
   const float frequency = (argc < 3) ? kFrequency : std::stof(argv[2]);
-  const unsigned long long nOps =
-      22 * kNBodies * kNBodies * timesteps + 12 * timesteps;
+  const float nOps =
+      22 * static_cast<float>(kNBodies) * kNBodies * timesteps + 12 * timesteps;
   std::cout << "Frequency:            " << frequency << " MHz\n";
-  std::cout << "Number of operations: " << nOps << " ("
-            << static_cast<float>(nOps) << ")\n";
+  std::cout << "Number of operations: " << nOps << "\n";
   const auto expected_runtime = timesteps *
                                 (kUnrollDepth * kPipelineFactor +
                                  kNTiles * (kNBodies * kPipelineFactor +
