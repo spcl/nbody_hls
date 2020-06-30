@@ -1,8 +1,4 @@
 # Author: Johannes de Fine Licht (johannes.definelicht@inf.ethz.ch)
-# Date:   October 2017
-
-# Implemented according to:
-# https://www.xilinx.com/support/documentation/sw_manuals/xilinx2017_2/ug1023-sdaccel-user-guide.pdf
 
 # Load configuration variables
 source config.tcl
