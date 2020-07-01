@@ -1,8 +1,11 @@
+/// @author    Johannes de Fine Licht (johannes.definelicht@inf.ethz.ch)
+/// @copyright This software is copyrighted under the BSD 3-Clause License.
+
 #include <iostream>
 #include "NBody.h"
 
 void PrintUsage() {
-  std::cerr << "Usage: ./Stats timesteps [<routed frequency>]\n" << std::flush;
+  std::cerr << "Usage: ./Stats <timesteps> [<routed frequency>]\n" << std::flush;
 }
 
 // Prints the expected performance of the current configuration in hardware.
@@ -15,9 +18,7 @@ int main(int argc, char **argv) {
   }
   const auto timesteps = std::stoul(argv[1]);
   const float frequency = (argc < 3) ? kFrequency : std::stof(argv[2]);
-  const double nOps =
-      22 * static_cast<double>(kNBodies) * kNBodies * timesteps +
-      12 * timesteps;
+  const double nOps = NumberOfOps(timesteps);
   std::cout << "Frequency:            " << frequency << " MHz\n";
   std::cout << "Number of operations: " << nOps << "\n";
   const double expected_runtime =
