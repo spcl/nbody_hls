@@ -1,5 +1,4 @@
-# Author:  Johannes de Fine Licht (johannes.definelicht@inf.ethz.ch)
-# Created: January 2018
+# Author:  Johannes de Fine Licht (definelicht@inf.ethz.ch)
 
 cmake_minimum_required(VERSION 2.8)
 project(nbody_hls C CXX)

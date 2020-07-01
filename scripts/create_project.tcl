@@ -1,4 +1,4 @@
-# Author: Johannes de Fine Licht (johannes.definelicht@inf.ethz.ch)
+# Author: Johannes de Fine Licht (definelicht@inf.ethz.ch)
 
 # Load configuration variables
 source config.tcl
