@@ -1,4 +1,5 @@
 # Author:  Johannes de Fine Licht (definelicht@inf.ethz.ch)
+# Copyright: This software is copyrighted under the BSD 3-Clause License.
 
 cmake_minimum_required(VERSION 2.8)
 project(nbody_hls C CXX)
@@ -33,10 +34,15 @@ find_package(Threads REQUIRED)
 
 include_directories(include hlslib/include ${CMAKE_BINARY_DIR} ${Vitis_INCLUDE_DIRS})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -DHLSLIB_LEGACY_SDX=0")
-set(CMAKE_VPP_FLAGS "${CMAKE_VPP_FLAGS} -std=c++11 -DHLSLIB_LEGACY_SDX=0 -DHLSLIB_OPERATOR_ADD_RESOURCE=${NBODY_ADD_CORE} -DNBODY_ADD_CORE=${NBODY_ADD_CORE} -DNBODY_MULT_CORE=${NBODY_MULT_CORE}")
+set(CMAKE_VPP_FLAGS "${CMAKE_VPP_FLAGS} -std=c++11 -DHLSLIB_LEGACY_SDX=0 -DHLSLIB_OPERATOR_ADD_RESOURCE=${NBODY_ADD_CORE} -DNBODY_ADD_CORE=${NBODY_ADD_CORE} -DNBODY_MULT_CORE=${NBODY_MULT_CORE} -DHLSLIB_SYNTHESIS -DNBODY_SYNTHESIS")
 if(NBODY_FLATTEN)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNBODY_FLATTEN")
   set(CMAKE_VPP_FLAGS "${CMAKE_VPP_FLAGS} -DNBODY_FLATTEN")
+endif()
+if(Vitis_USE_VITIS_HLS)
+  set(CMAKE_VPP_FLAGS "${CMAKE_VPP_FLAGS} -D__VITIS_HLS__")
+else()
+  set(CMAKE_VPP_FLAGS "${CMAKE_VPP_FLAGS} -D__VIVADO_HLS__")
 endif()
 
 configure_file(include/Config.h.in Config.h)
@@ -97,8 +103,7 @@ set(NBODY_VPP_COMMAND
   --platform ${NBODY_DSA_NAME}
   --sp ${DONUT_KERNEL_NAME}_1.m00_axi:bank0
   --sp ${DONUT_KERNEL_NAME}_1.m01_axi:bank1
-  --xp prop:kernel.${DONUT_KERNEL_NAME}.kernel_flags="${CMAKE_VPP_FLAGS} -DNBODY_SYNTHESIS -DHLSLIB_SYNTHESIS"
-  --max_memory_ports all)
+  --advanced.prop kernel.${DONUT_KERNEL_NAME}.kernel_flags="${CMAKE_VPP_FLAGS}")
 if(NBODY_TARGET_CLOCK GREATER 0)
   set(NBODY_VPP_COMMAND ${NBODY_VPP_COMMAND}
       --kernel_frequency ${NBODY_TARGET_CLOCK})

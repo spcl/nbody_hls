@@ -58,7 +58,7 @@ Time:
 
 void RepeatFirstTile(hlslib::Stream<PosMass_t> &streamIn,
                      hlslib::Stream<PosMass_t> &streamOut, unsigned timesteps) {
-  hlslib::Stream<PosMass_t> buffer(kUnrollDepth * kPipelineFactor);
+  hlslib::Stream<PosMass_t, kUnrollDepth * kPipelineFactor> buffer;
 Time:
   for (unsigned t = 0; t < timesteps; ++t) {
   TilesMemoryFlattened:
