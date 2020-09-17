@@ -39,11 +39,8 @@ if(NBODY_FLATTEN)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNBODY_FLATTEN")
   set(CMAKE_VPP_FLAGS "${CMAKE_VPP_FLAGS} -DNBODY_FLATTEN")
 endif()
-if(Vitis_USE_VITIS_HLS)
-  set(CMAKE_VPP_FLAGS "${CMAKE_VPP_FLAGS} -D__VITIS_HLS__")
-else()
-  set(CMAKE_VPP_FLAGS "${CMAKE_VPP_FLAGS} -D__VIVADO_HLS__")
-endif()
+# Always use Vivado HLS, as stream interfaces don't work with vitis_hls
+set(CMAKE_VPP_FLAGS "${CMAKE_VPP_FLAGS} -D__VIVADO_HLS__")
 
 configure_file(include/Config.h.in Config.h)
 
