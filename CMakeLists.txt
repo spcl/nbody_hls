@@ -67,7 +67,7 @@ set(NBODY_PROJECT_NAME "NBody")
 string(REPLACE ";" " " NBODY_SRC_SYNTHESIS "${NBODY_KERNEL_SRC}")
 set(NBODY_ENTRY_FUNCTION "NBody")
 configure_file(scripts/Synthesis.tcl.in SynthesizeNBody.tcl)
-add_custom_target(synthesize_nbody COMMAND ${Vitis_HLS} -f SynthesizeNBody.tcl)
+add_custom_target(synthesize_nbody COMMAND ${Vitis_VIVADO_HLS} -f SynthesizeNBody.tcl)
 
 # Vivado project options
 set(DONUT_KERNEL_NAME nbody_kernel) 
