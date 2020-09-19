@@ -190,7 +190,7 @@ int main(int argc, char **argv) {
     const auto elapsed = kernel.ExecuteTask();
     std::cout << " Done.\n";
 
-    timeelapsed = elapsed.first;
+    timeelapsed = elapsed.second;
     const double perf = 1e-9 * NumberOfOps(timesteps) / timeelapsed;
     std::cout << "Kernel executed in " << timeelapsed
               << " seconds, corresponding to a performance of " << perf
