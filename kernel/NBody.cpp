@@ -258,7 +258,7 @@ Time:
         }
 
         // --------------------------------------------------------------------
-      } else { // state == State::draining 
+      } else { // state == State::draining
         // --------------------------------------------------------------------
 
         if (k < kUnrollDepth - d - 1) {
@@ -313,7 +313,7 @@ Time:
         // --------------------------------------------------------------------
       } // State == state::draining
 
-    } // Flattened loop 
+    } // Flattened loop
   } // Loop over steps
 }
 
@@ -384,7 +384,7 @@ void NBody(unsigned timesteps, MemoryPack_t const positionMassIn[],
   #pragma HLS INTERFACE s_axilite port=velocityIn bundle=control
   #pragma HLS INTERFACE s_axilite port=velocityOut bundle=control
   #pragma HLS INTERFACE s_axilite port=return bundle=control
-  
+
   #pragma HLS DATAFLOW
 
   hlslib::Stream<PosMass_t> positionMassRepeat("positionMassRepeat");
@@ -403,29 +403,6 @@ void NBody(unsigned timesteps, MemoryPack_t const positionMassIn[],
 
   HLSLIB_DATAFLOW_FUNCTION(ReadMemory_Velocity, velocityIn, velocityReadMemory,
                            timesteps);
-
-#ifndef HLSLIB_SYNTHESIS
-  for (int i = 0; i < kUnrollDepth; ++i) {
-    positionMassPipes[i].set_name(
-        ("positionMassPipes[" + std::to_string(i) + "]").c_str());
-    velocityPipes[i].set_name(
-        ("velocityPipes[" + std::to_string(i) + "]").c_str());
-    accelerationPipes[i].set_name(
-        ("accelerationPipes[" + std::to_string(i) + "]").c_str());
-  }
-  accelerationPipes[kUnrollDepth].set_name(
-      ("accelerationPipes[" + std::to_string(kUnrollDepth) + "]").c_str());
-  ::hlslib::_Dataflow::Get().AddFunction(
-      ConvertMemoryToNonDivisible<Data_t, kDims>, velocityReadMemory,
-      velocityReadKernel, timesteps * kNBodies);
-  ::hlslib::_Dataflow::Get().AddFunction(
-      ConvertNonDivisibleToMemory<Data_t, kDims>, velocityWriteKernel,
-      velocityWriteMemory, timesteps * kNBodies);
-  HLSLIB_DATAFLOW_FUNCTION(ContractWidth_PositionMass, positionMassReadMemory,
-                           positionMassReadKernel, timesteps);
-  HLSLIB_DATAFLOW_FUNCTION(ExpandWidth_PositionMass, positionMassWriteKernel,
-                           positionMassWriteMemory, timesteps);
-#endif
 
   HLSLIB_DATAFLOW_FUNCTION(ComputeStage, positionMassRepeat,
                            positionMassPipes[0], velocityReadKernel,

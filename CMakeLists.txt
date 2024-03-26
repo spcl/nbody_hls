@@ -1,7 +1,7 @@
 # Author:  Johannes de Fine Licht (definelicht@inf.ethz.ch)
 # Copyright: This software is copyrighted under the BSD 3-Clause License.
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.18)
 project(nbody_hls C CXX)
 
 # Target options
@@ -64,10 +64,10 @@ set(NBODY_PROJECT_NAME "NBody")
 string(REPLACE ";" " " NBODY_SRC_SYNTHESIS "${NBODY_KERNEL_SRC}")
 set(NBODY_ENTRY_FUNCTION "NBody")
 configure_file(scripts/Synthesis.tcl.in SynthesizeNBody.tcl)
-add_custom_target(synthesize_nbody COMMAND ${Vitis_VIVADO_HLS} -f SynthesizeNBody.tcl)
+add_custom_target(synthesize_nbody COMMAND ${Vitis_HLS} -f SynthesizeNBody.tcl)
 
 # Vivado project options
-set(DONUT_KERNEL_NAME nbody_kernel) 
+set(DONUT_KERNEL_NAME nbody_kernel)
 set(DONUT_KERNEL_DIRECTORY ${CMAKE_BINARY_DIR})
 set(DONUT_VENDOR_NAME SPCL)
 set(DONUT_TMP_DIR ${NBODY_TMP_DIR})
@@ -75,8 +75,8 @@ set(DONUT_PART_NAME ${NBODY_PART_NAME})
 set(DONUT_SOURCES_DIRECTORY ${CMAKE_BINARY_DIR}/${NBODY_PROJECT_NAME}/${NBODY_PART_NAME}/impl/verilog)
 configure_file(scripts/config.tcl.in config.tcl)
 configure_file(hw/top.v.in top.v)
-configure_file(scripts/O_opt_design_pre.tcl data/sdx/xocc/O_opt_design_pre.tcl) 
-configure_file(scripts/optMap.xml data/sdx/xocc/optMap.xml) 
+configure_file(scripts/O_opt_design_pre.tcl data/sdx/xocc/O_opt_design_pre.tcl)
+configure_file(scripts/optMap.xml data/sdx/xocc/optMap.xml)
 
 # SDx kernel wizard custom RTL project
 add_custom_target(setup_project COMMAND ${CMAKE_SOURCE_DIR}/scripts/project_manager.py setup ${DONUT_KERNEL_NAME} ${Vitis_VIVADO} ${CMAKE_BINARY_DIR} ${DONUT_TMP_DIR})
@@ -95,11 +95,11 @@ set(NBODY_VPP_COMMAND
   -I${CMAKE_SOURCE_DIR}/include
   -I${CMAKE_SOURCE_DIR}/hlslib/include
   -I${CMAKE_BINARY_DIR}
-  ${DONUT_KERNEL_NAME}.xo 
-  --kernel ${DONUT_KERNEL_NAME} 
+  ${DONUT_KERNEL_NAME}.xo
+  --kernel ${DONUT_KERNEL_NAME}
   --platform ${NBODY_DSA_NAME}
-  --sp ${DONUT_KERNEL_NAME}_1.m00_axi:bank0
-  --sp ${DONUT_KERNEL_NAME}_1.m01_axi:bank1
+  --connectivity.sp ${DONUT_KERNEL_NAME}_1.m00_axi:bank0
+  --connectivity.sp ${DONUT_KERNEL_NAME}_1.m01_axi:bank1
   --advanced.prop kernel.${DONUT_KERNEL_NAME}.kernel_flags="${CMAKE_VPP_FLAGS}")
 if(NBODY_TARGET_CLOCK GREATER 0)
   set(NBODY_VPP_COMMAND ${NBODY_VPP_COMMAND}
